@@ -14,8 +14,9 @@ and more.
 stylus (Latin for "pen") does one thing: **help researchers write academic
 English well.** Each skill is a self-contained Markdown folder — a `SKILL.md`
 carrying the workflow and core rules, plus `references/` loaded only when a
-task needs them. Pure Markdown. No dependencies, no build step, no vendor
-lock-in.
+task needs them. The writing skills are pure Markdown with zero dependencies;
+`scifig` ships a Python / Node toolkit with automatic lint, invoked on demand.
+No build step, no vendor lock-in.
 
 ## Skills
 
@@ -23,10 +24,11 @@ lock-in.
 |---|---|---|
 | [math-writing](skills/math-writing/) | Mathematical writing standards: proofs as prose, formula grammar and punctuation, notation consistency, the four-C review frame | You write, edit, translate, or review proofs, theorems, derivations, or LaTeX drafts |
 | [scientific-paper-writing](skills/scientific-paper-writing/) | Scientific manuscript writing: structure (Whitesides), sentences (Gopen & Swan), phrasing (Manchester Phrasebank), with Fast / Learn modes | You plan, draft, revise, or polish English manuscripts (PRL, Nature, PRX, …) |
+| [scifig](skills/scifig/) | Publication-grade figures as **editable vector SVG + PDF**: algorithm & optimization plots (convergence curves, performance profiles, loss landscapes, Pareto fronts, CD diagrams, ablations…), method schematics / flowcharts (JS), multi-panel assembly, automatic lint + rendered previews for self-critique | You make any paper figure, results plot, method overview or algorithm diagram, or want any plot turned "Nature-style" |
 
-The two skills are complementary: `math-writing` governs how mathematical
-text is written correctly; `scientific-paper-writing` governs how the whole
-paper is written well.
+The skills are complementary: `math-writing` governs how mathematical text is
+written correctly; `scientific-paper-writing` governs how the whole paper is
+written well; `scifig` governs how its figures look publishable.
 
 ## Installation
 
@@ -45,6 +47,7 @@ set of symlinks serves several tools at once:
 ```bash
 ln -s /path/to/stylus/skills/math-writing              ~/.agents/skills/math-writing
 ln -s /path/to/stylus/skills/scientific-paper-writing ~/.agents/skills/scientific-paper-writing
+ln -s /path/to/stylus/skills/scifig                   ~/.agents/skills/scifig
 ```
 
 ### Per-agent directories
@@ -76,8 +79,8 @@ npx degit iluluyu/stylus/skills/math-writing math-writing
 
 Zip the `skills/<name>/` folder and upload it as-is. The
 [spec](https://agentskills.io/specification) requires the folder name to
-match the skill's `name`: the top level of the zip must be `math-writing/`
-or `scientific-paper-writing/` — not `stylus-main/`.
+match the skill's `name`: the top level of the zip must be the skill's own
+folder (`math-writing/`, `scifig/`, …) — not `stylus-main/`.
 
 ## Repository layout
 
@@ -91,13 +94,19 @@ stylus/
     │   └── references/
     │       ├── proof-writing.md       # drafting: proof-writing conventions
     │       └── paper-checklist.md     # reviewing: four C's + QA checklists
-    └── scientific-paper-writing/
-        ├── SKILL.md               # workflow: modes + principle-code index
-        └── references/
-            ├── structure.md               # P codes: paper structure
-            ├── sentences.md               # S codes: sentence structure
-            ├── phrasing.md                # W codes: wording
-            └── grammar-and-conventions.md # G/C codes: grammar & physics conventions
+    ├── scientific-paper-writing/
+    │   ├── SKILL.md               # workflow: modes + principle-code index
+    │   └── references/
+    │       ├── structure.md               # P codes: paper structure
+    │       ├── sentences.md               # S codes: sentence structure
+    │       ├── phrasing.md                # W codes: wording
+    │       └── grammar-and-conventions.md # G/C codes: grammar & physics conventions
+    └── scifig/
+        ├── SKILL.md               # figure workflow: brief → chart choice → render-look-fix loop
+        ├── scripts/               # Python package scifig + JS diagram library sfd.mjs
+        ├── assets/                # matplotlib style (Nature-grade typography)
+        ├── examples/              # minimal runnable examples + rendered gallery
+        └── references/            # chart catalog / color / journal specs / composition / critique checklist
 ```
 
 Skill content is written in English (the output being written is English),
@@ -126,4 +135,4 @@ All examples in the skills are original; none are copied from the sources.
 ## Keywords
 
 academic writing · mathematical writing · paper polishing · scientific
-writing · LaTeX · Agent Skills ·
+writing · scientific figures · LaTeX · Agent Skills ·

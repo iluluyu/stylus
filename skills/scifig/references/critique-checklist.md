@@ -1,6 +1,6 @@
 # Pre-delivery self-review (every time)
 
-Lint catches mechanical problems; the items below need you to **look at the PNG**. Open the preview with Read; crop
+Lint (matplotlib lint, Typst geometry lint, PDF lint) catches mechanical problems; the items below need you to **look at the PNG**. Open the preview with Read; crop
 and zoom with PIL when needed. Deliver only when every item is "yes"; on "no", fix, save again, look again.
 
 ## A. Message (most important)
@@ -34,13 +34,14 @@ and zoom with PIL when needed. Deliver only when every item is "yes"; on "no", f
 20. Uniform arrow style; edges don't cross boxes or text; ≤ 1 crossing.
 
 ## F. Files
-21. SVG text is `<text>` (check.py raises an ERROR if text was outlined); no embedded rasters (except photos).
-22. Deliver SVG + PDF (+ PNG preview) + the generating script; file names match figure numbers (`fig2.svg`).
+21. Text is real text: matplotlib SVG `<text>` / PDF TrueType; Typst PDF (its SVG uses outlines by design — submit the PDF). No embedded rasters (except photos).
+22. Deliver PDF + SVG (+ PNG preview) + **one** generating source file per figure, bundled standalone
+    (`scripts/bundle.py`); file names match figure numbers (`fig2.py`, `fig2.pdf`).
 23. Provide a caption draft: one-sentence conclusion + per-panel description + n / error meaning / statistical test.
 
 ## Typical "AI look" signals (fix on sight)
 - Every panel has a title, every line has a boxed legend → remove titles, use direct labels.
 - All methods equally saturated → desaturate or grey the baselines, highlight only Ours.
-- Uneven box sizes, irregular gaps, inconsistent text centering → `sameSize` + relative placement.
+- Uneven box sizes, irregular gaps, inconsistent text centering → grid cells + `sf.same-size`.
 - Gradients, shadows, oversized corner radii, heavy borders, emoji icons → delete them all.
 - Mixed fonts (DejaVu, Times, Arial together) → check.py's font summary shows them; unify on Arial.

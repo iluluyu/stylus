@@ -1,4 +1,4 @@
-"""SVG post-processing shared by the Python and JS pipelines.
+"""SVG post-processing for matplotlib output (also used by check.py).
 
 * normalize font stacks so files open with Arial/Helvetica on any machine
 * merge per-glyph <tspan>s that matplotlib writes for mathtext (one editable string instead of 20)
@@ -122,7 +122,7 @@ def tidy_svg(path: str, out: str | None = None, inkscape_layers: bool = False, m
     return stats
 
 
-# ---------- geometry helpers used by check.py / assemble.py ----------
+# ---------- geometry helpers used by check.py ----------
 _UNIT_PT = {"pt": 1.0, "px": 0.75, "mm": 72 / 25.4, "cm": 720 / 25.4, "in": 72.0, "pc": 12.0, "": 0.75}
 
 

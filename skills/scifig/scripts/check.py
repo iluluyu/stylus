@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Render and audit any SVG figure (from scifig, sfd.mjs, or hand-made).
+"""Build, render and audit any figure: a Typst source, a PDF, or an SVG.
 
-    python check.py fig.svg                 # -> fig.png preview + lint report
-    python check.py fig.svg --pdf           # also fig.pdf (vector, fonts embedded)
-    python check.py fig.svg --cvd           # also fig.cvd.png: normal | deutan | protan | grayscale
+    python check.py fig1.typ                # Typst: compile -> fig1.pdf / .svg / .png + geometry & PDF lint
+    python check.py fig2.pdf                # any PDF: lint + PNG preview
+    python check.py fig2.svg --pdf          # any SVG: lint + PNG (+ PDF) via an SVG renderer
+    python check.py fig.typ --cvd           # also fig.cvd.png: normal | deutan | protan | grayscale
     python check.py fig.svg --journal neurips --dpi 400
 
-Rendering backends, first that works: rsvg-convert CLI, cairosvg, librsvg via ctypes,
-inkscape CLI, playwright/chromium, ImageMagick. Install hints are printed if none works.
+SVG renderers, first that works: rsvg-convert CLI, cairosvg, librsvg via ctypes, inkscape CLI,
+playwright/chromium, ImageMagick. PDF previews: pdftocairo (poppler), pypdfium2 or PyMuPDF.
 Exit code 1 if lint finds ERRORs (useful in a loop: fix until exit 0).
 """
 from __future__ import annotations
@@ -280,7 +281,11 @@ def lint_svg(path, journal="nature"):
     if n_img:
         add("WARN", "raster", f"{n_img} embedded raster <image>(s); fine for photos, not for plots/diagrams")
     if n_text == 0 and n_path > 50:
-        add("ERROR", "outlined-text", "no <text> elements: text was converted to paths and is not editable")
+        if 'data-typst' in raw or "<use xlink:href=\"#g" in raw or "href=\"#g" in raw:
+            add("INFO", "outlined-text", "Typst SVG: glyphs are outlines by design; lint and edit the PDF "
+                                         "(python check.py fig.typ) — its text is real text")
+        else:
+            add("ERROR", "outlined-text", "no <text> elements: text was converted to paths and is not editable")
     for eff, txt, weight in sizes:
         is_label = weight in ("bold", "bolder", "600", "700", "800", "900") and len(txt) <= 2
         if eff < fmin - 0.05:
@@ -334,41 +339,109 @@ def cvd_montage(png, out):
     return out
 
 
+def render_pdf_png(pdf, png, dpi=300):
+    """PDF page 1 -> PNG on white."""
+    exe = shutil.which("pdftocairo")
+    if exe:
+        subprocess.run([exe, "-png", "-singlefile", "-r", str(dpi), pdf, os.path.splitext(png)[0]],
+                       check=True, capture_output=True)
+        return "pdftocairo"
+    try:
+        import pypdfium2 as pdfium  # noqa
+        page = pdfium.PdfDocument(pdf)[0]
+        page.render(scale=dpi / 72.0, fill_color=(255, 255, 255, 255)).to_pil().save(png)
+        return "pypdfium2"
+    except ImportError:
+        pass
+    try:
+        import fitz  # noqa  (PyMuPDF)
+        fitz.open(pdf)[0].get_pixmap(dpi=dpi, alpha=False).save(png)
+        return "pymupdf"
+    except ImportError:
+        pass
+    raise RuntimeError("no PDF renderer: install poppler (pdftocairo), `pip install pypdfium2` or `pip install pymupdf`")
+
+
+def _print_issues(issues):
+    if issues:
+        order = {"ERROR": 0, "WARN": 1, "INFO": 2}
+        n = lambda l: sum(1 for i in issues if i[0] == l)  # noqa: E731
+        print(f"lint: {n('ERROR')} error(s), {n('WARN')} warning(s), {n('INFO')} info")
+        for lvl, code, msg in sorted(issues, key=lambda i: order[i[0]]):
+            print(f"  [{lvl}] {code}: {msg}")
+    else:
+        print("lint: PASS")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("svg")
-    ap.add_argument("--png", help="output PNG path (default: next to the SVG)")
+    ap.add_argument("figure", help=".typ, .pdf or .svg")
+    ap.add_argument("--png", help="output PNG path (default: next to the input)")
     ap.add_argument("--dpi", type=int, default=300)
-    ap.add_argument("--pdf", action="store_true", help="also write a PDF next to the SVG")
+    ap.add_argument("--pdf", action="store_true", help="SVG input: also write a PDF next to it")
     ap.add_argument("--cvd", action="store_true", help="also write <name>.cvd.png (color-vision simulation)")
-    ap.add_argument("--journal", default="nature")
+    ap.add_argument("--journal", default=None, help="profile for the lint (default: nature, or the .typ setup)")
     ap.add_argument("--no-render", action="store_true")
     ap.add_argument("--quiet", action="store_true", help="only print problems and output paths")
     a = ap.parse_args(argv)
-    base = os.path.splitext(a.svg)[0]
+    ext = os.path.splitext(a.figure)[1].lower()
+    base = os.path.splitext(a.figure)[0]
     png = a.png or base + ".png"
-    issues, stats = lint_svg(a.svg, a.journal)
+
+    if ext == ".typ":
+        from scifig.typstbuild import compile_typst
+        res = compile_typst(a.figure, ppi=a.dpi, journal=a.journal, quiet=a.quiet)
+        png = res["paths"].get("png")
+        if a.quiet:
+            _print_issues(res["issues"])
+            print("files: " + ", ".join(res["paths"].values()))
+        if a.cvd and png and "{p}" not in png:
+            cvd_montage(png, base + ".cvd.png")
+            print(f"cvd: {base}.cvd.png")
+        return 1 if any(i[0] == "ERROR" for i in res["issues"]) else 0
+
+    if ext == ".pdf":
+        from scifig.pdflint import lint_pdf
+        issues, stats = lint_pdf(a.figure, a.journal or "nature")
+        backend = None
+        if a.no_render:
+            png = None
+        else:
+            try:
+                backend = render_pdf_png(a.figure, png, a.dpi)
+            except Exception as e:  # noqa: BLE001
+                print(f"[render] {e}")
+                png = None
+        if a.cvd and png:
+            cvd_montage(png, base + ".cvd.png")
+        if not a.quiet and stats:
+            print(f"pdf: {a.figure}  {stats['size_mm'][0]} x {stats['size_mm'][1]} mm, {stats['texts']} glyphs, "
+                  f"font {stats['font_pt'][0] if stats['font_pt'] else '-'}-{stats['font_pt'][1] if stats['font_pt'] else '-'} pt, "
+                  f"fonts {dict(stats['fonts'])}, {stats['hue_families']} hue families")
+        _print_issues(issues)
+        if png:
+            print(f"preview: {png}" + (f"  (rendered with {backend})" if backend and not a.quiet else ""))
+        if a.cvd and png:
+            print(f"cvd: {base}.cvd.png")
+        return 1 if any(i[0] == "ERROR" for i in issues) else 0
+
+    issues, stats = lint_svg(a.figure, a.journal or "nature")
     backend = None
-    if not a.no_render:
+    if a.no_render:
+        png = None
+    else:
         try:
-            backend = render(a.svg, png=png, pdf=(base + ".pdf") if a.pdf else None, dpi=a.dpi)
+            backend = render(a.figure, png=png, pdf=(base + ".pdf") if a.pdf else None, dpi=a.dpi)
         except Exception as e:  # noqa: BLE001
             print(f"[render] {e}")
             png = None
     if a.cvd and png:
         cvd_montage(png, base + ".cvd.png")
     if not a.quiet:
-        print(f"svg: {a.svg}  {stats['size_mm'][0]} x {stats['size_mm'][1]} mm, {stats['texts']} text elements, "
+        print(f"svg: {a.figure}  {stats['size_mm'][0]} x {stats['size_mm'][1]} mm, {stats['texts']} text elements, "
               f"font {stats['font_pt'][0] if stats['font_pt'] else '-'}-{stats['font_pt'][1] if stats['font_pt'] else '-'} pt, "
               f"fonts {dict(stats['fonts'])}, {stats['hue_families']} hue families")
-    if issues:
-        order = {"ERROR": 0, "WARN": 1, "INFO": 2}
-        n = lambda l: sum(1 for i in issues if i[0] == l)  # noqa: E731
-        print(f"svg-lint: {n('ERROR')} error(s), {n('WARN')} warning(s), {n('INFO')} info")
-        for lvl, code, msg in sorted(issues, key=lambda i: order[i[0]]):
-            print(f"  [{lvl}] {code}: {msg}")
-    else:
-        print("svg-lint: PASS")
+    _print_issues(issues)
     if png:
         print(f"preview: {png}" + (f"  (rendered with {backend})" if not a.quiet else ""))
     if a.pdf and backend:

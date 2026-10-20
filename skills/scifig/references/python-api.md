@@ -1,9 +1,11 @@
 # scifig Python API reference
 
 ```python
-import sys; sys.path.insert(0, "<skill>/scripts")
+import sys; sys.path.insert(0, "<skill>/scripts")     # a bundled standalone script needs no path
 import scifig as sf
 ```
+Modules: `style` (profiles, sizes, panel labels) · `palette` / `color` · `plots` · `export` (save) · `lint` (matplotlib) ·
+`pdflint` · `typstbuild` · `svgtools` · `bundle`. The Typst twin is `scripts/scifig.typ` (`diagram-api.md`).
 
 ## Style and size (`scifig.style`)
 
@@ -65,7 +67,23 @@ tidy_log(ax)                                      # remove minor-tick label clut
 |---|---|
 | `sf.save(fig, "out/fig2", formats=("svg","pdf","png"), png_dpi=300, lint=True)` | Gives every artist a readable id (`panel-a`, `a-line-ours`, `a-band-ours`…), removes unneeded clip groups, keeps text as `<text>`, merges mathtext per-glyph tspans, transparent SVG/PDF background, white PNG preview; prints the lint report. Returns `{"paths", "issues", "size_mm"}`. |
 | `sf.lint_figure(fig)` → `[Issue]`; `sf.report(issues)` | Text overlap / clipping, font size (incl. sub/superscripts), text on lines or markers, legend over data, inset covering data, default colors, raster heatmaps, column width, contrast, hue count, dense ticks. |
-| `python scripts/check.py fig.svg [--pdf] [--cvd] [--journal neurips]` | Render + audit any SVG (rendered font sizes, fonts, rasters, outlined text, hues). `--cvd` writes a color-blind / grayscale comparison. Exit code 1 on lint ERRORs. |
+| `sf.lint_pdf("fig.pdf", journal="nature")` → `(issues, stats)` | Lint any finished PDF: width / height, font sizes, fonts, clipped text, text overlap, lines through text, contrast, hues, rasters (needs `pdfplumber`). |
+| `python scripts/check.py fig.typ \| fig.pdf \| fig.svg [--cvd] [--journal neurips]` | Build / render + audit any figure. `--cvd` writes a color-blind / grayscale comparison. Exit code 1 on lint ERRORs. |
+
+## Typst (schematics and composed figures)
+
+| Function | Description |
+|---|---|
+| `sf.compile_typst("fig1.typ", out=None, formats=("pdf","svg","png"), ppi=300, journal=None)` | Compile a Typst figure (finds the `typst` CLI or the `typst` Python wheel, passes the installed Arial-metric font), then report the diagram geometry lint + PDF lint. Returns `{"paths", "issues", "size_mm"}`. |
+| `sf.typst_figure(SOURCE, "out/fig1", files={"panel_c.pdf": path})` | Compile Typst source kept in a Python string; `scifig.typ` and `files` are staged next to it, so `#import "scifig.typ" as sf` and `image("panel_c.pdf")` just work. The way to keep a mixed figure in **one** `.py`. |
+| `sf.library_source()` | Text of scifig.typ (the embedded copy inside a standalone bundle). |
+
+## One file per figure (delivery / migration)
+
+`python scripts/bundle.py fig2.py [-o out.py]` → `standalone/fig2.py`: the scifig modules (and scifig.typ when the
+script calls `typst_figure` / `compile_typst`) are embedded and registered as the module `scifig`, so the figure code
+runs unchanged anywhere with numpy + matplotlib (+ Typst). `.typ` figures bundle the same way. The library in the
+skill stays split into modules; only the deliverable is merged.
 
 ## Typical combination
 

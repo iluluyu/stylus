@@ -8,10 +8,10 @@ calmer print look. Verified minimum pairwise CIEDE2000: 25 normal, 14.1 protan, 
 
 | Name | Value | Default meaning |
 |---|---|---|
-| blue | `#1A5FA0` | baseline 1 / standard component (diagram `primary`) |
-| orange (vermillion) | `#CF5B2A` | **our method** (`ACCENT`, diagram `accent`) |
+| blue | `#1A5FA0` | baseline 1 / standard component (Typst tone `primary`) |
+| orange (vermillion) | `#CF5B2A` | **our method** (`ACCENT`, Typst tone `accent`) |
 | green | `#118C6E` | baseline 2 / secondary component |
-| purple | `#C26FA3` | baseline 3 / losses and objectives (diagram `loss`) |
+| purple | `#C26FA3` | baseline 3 / losses and objectives (Typst tone `loss`) |
 | amber | `#E1A02E` | baseline 4 |
 | sky | `#5BADDF` | baseline 5 |
 | grey | `#6E6E6E` + `NEUTRALS` ramp | reference lines, data, background elements |
@@ -21,7 +21,7 @@ Also built in: `okabe_ito` (original), `tol_bright`, `tol_vibrant`, `tol_muted` 
 ## Rules
 
 1. **Define method → color once**: `colors = sf.method_colors(METHODS, highlight="Ours")`, reuse in every panel.
-   In diagrams the same method uses the same tone (`accent` = vermillion = Python `ACCENT`).
+   In schematics the same method uses the same tone (`accent` = vermillion = Python `ACCENT` = `sf.accent` in Typst).
 2. **Emphasis by contrast, not quantity**: only "Ours" gets the saturated vermillion + a thicker line; with 4+ baselines use `scheme="gray"` (grey ramp + direct labels) so readers see "ours vs the rest".
 3. **≤ 6 hues.** More categories: group (one hue in several lightnesses for a method family), facet (small multiples), or label directly.
 4. **Color is never the only encoding**: important distinctions also differ in width, style, marker or position; `check.py --cvd` renders deutan / protan / grayscale versions — the key conclusion must survive grayscale.
@@ -44,4 +44,5 @@ sf.palette_report(["#1A5FA0", "#C0392B", "#2E8B57"])
 # {'normal': {'min_dE': ...}, 'deutan': ..., 'protan': ..., 'tritan': ..., 'gray': ..., 'contrast_vs_bg': {...}}
 ```
 If `min_dE < 10` under any vision type, change the color or add a second encoding; a color with `contrast_vs_bg < 4.5` must not be used for text.
-For journal or lab brand colors, replace consistently via `Diagram({ palette: { orange: '#...' } })` and `method_colors(..., accent='#...')` instead of scattered manual edits.
+For journal or lab brand colors, replace consistently in both places — `PALETTES` / `method_colors(..., accent='#...')`
+in Python and `palette` in `scripts/scifig.typ` (or `tone: rgb("#...")` per item) — instead of scattered manual edits.

@@ -1,9 +1,9 @@
 # Journal and conference specifications
 
-`sf.use(name)` / `Diagram({ journal: name })` / `check.py --journal name` share this table.
+`sf.use(name)` (Python) / `sf.setup.with(journal: name)` (Typst) / `check.py --journal name` share this table.
 **The Nature row was checked against the official final-artwork guidelines (2026)**; the others are common values —
 confirm with the journal's current author guidelines before submission, and if they differ edit `JOURNALS` in
-`scripts/scifig/style.py` and `THEMES` in `scripts/diagram/sfd.mjs`.
+`scripts/scifig/style.py` and `journals` in `scripts/scifig.typ` (keep the two identical).
 
 | Profile | Widths (mm) | Max height | Text size | Minimum | Panel labels |
 |---|---|---|---|---|---|
@@ -20,7 +20,8 @@ confirm with the journal's current author guidelines before submission, and if t
 - Arial/Helvetica; text 5–7 pt; panel labels 8 pt bold, upright, lowercase.
 - **Don't outline or rasterize text**; keep it editable; don't rasterize line art; supply unflattened editable vector files.
 - Preferred formats: `.ai` `.eps` `.pdf` (with editing capabilities retained); **plain SVG (not Inkscape SVG)** is also accepted; JPEG/TIFF/PNG are not accepted for main figures.
-  → scifig delivers both SVG (plain, no Inkscape namespaces) and PDF (TrueType fonts embedded).
+  → scifig delivers PDF (fonts embedded, text editable) for every figure, plus plain SVG; matplotlib SVGs keep
+  `<text>`, Typst SVGs draw glyphs as outlines — submit the PDF for Typst-made figures.
 - Embed fonts as TrueType (Type 42), never Type 3 (matplotlib is set to `pdf.fonttype=42`).
 - RGB color mode; avoid red–green combinations and rainbow scales; avoid colored text, contrast > 4.5.
 - Photographic images ≥ 300 dpi at their largest used size.
@@ -29,7 +30,7 @@ confirm with the journal's current author guidelines before submission, and if t
 ## Conference papers
 - Body text is larger (10 pt), so figure text is usually 7–9 pt to match; the `neurips`/`icml`/`cvpr` profiles account for this.
 - Widths come from LaTeX `\columnwidth` / `\textwidth`; include with `\includegraphics[width=\linewidth]{fig.pdf}` — **draw the figure at that width**, don't rely on LaTeX scaling.
-- Conferences usually take PDF; convert SVG with `check.py fig.svg --pdf`.
+- Conferences usually take PDF: `sf.save` and Typst write it directly; for other SVGs use `check.py fig.svg --pdf`.
 
 ## LaTeX example
 ```latex

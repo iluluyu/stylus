@@ -194,7 +194,9 @@ def lint_figure(fig, j=None, check_data_overlap=True) -> list[Issue]:
                 if t.get_gid() and t.get_gid().startswith(("label-",)):
                     continue
                 try:
-                    tb = t.get_window_extent(r)
+                    # Text part only: an Annotation's own extent includes its (often invisible) leader
+                    # line, which starts on the data point and would always "overlap" it
+                    tb = Text.get_window_extent(t, r)
                 except Exception:
                     tb = None
                 if tb is not None and tb.width > 0:
@@ -205,9 +207,8 @@ def lint_figure(fig, j=None, check_data_overlap=True) -> list[Issue]:
                             issues.append(Issue("WARN", "text-on-data",
                                                 f"'{_short(t)}' sits on a marker of '{c.get_label()}'"))
                             break
-                try:
-                    bb = t.get_window_extent(r)
-                except Exception:
+                bb = tb
+                if bb is None:
                     continue
                 rect = (bb.x0 + 1, bb.y0 + 1, bb.x1 - 1, bb.y1 - 1)
                 for ln, P in paths:

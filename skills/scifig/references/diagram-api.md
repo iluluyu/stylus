@@ -1,142 +1,156 @@
-# sfd.mjs API reference (schematics / flowcharts)
+# scifig.typ API reference (schematics / flowcharts in Typst)
 
-```js
-import { Diagram } from '<skill>/scripts/diagram/sfd.mjs';   // Node ≥ 18, zero dependencies
-const d = new Diagram({ width: 'double' });
-// ... add items, edges, groups ...
-d.save('figures/fig1.svg');      // writes SVG, prints lint, runs check.py for a PNG preview
+```typ
+#import "scifig.typ" as sf                      // or "<skill>/scripts/scifig.typ" — keep the `as sf` form
+#show: sf.setup.with(journal: "nature", width: "double")
+#let fig = sf.diagram(
+  sf.node((0, 0), [Data $cal(D)$], shape: "cylinder", name: <data>),
+  sf.node((1, 0), [Model $f_theta$], tone: "primary", name: <model>),
+  sf.edge(<data>, <model>),
+)
+#sf.panel("a", fig)
 ```
+Build: `python <skill>/scripts/check.py fig1.typ` → `fig1.pdf` (real text) + `fig1.svg` (text as outlines) + `fig1.png`
++ lint. Typst ≥ 0.13 (tested 0.15.1); `@preview/fletcher:0.5.8` is downloaded by Typst on first compile.
 
-**Units**: every number is in pt (1 mm = 2.835 pt) unless the option name says mm. y grows downward.
-**IDs**: every item has a unique id; SVG group ids are `node-<id>`, `edge-<from>-<to>`, `group-<id>` etc., easy to find in Illustrator / Inkscape.
+**Units**: lengths need units (`16pt`, `3mm`). Grid positions are `(column, row)`; rows go down.
+**Names**: items get `name: <id>` (a label); groups get a string id (`"inner"`). Edges, groups, badges, zooms,
+braces and notes refer to these. Unnamed items get automatic names (fine if nothing refers to them).
+**Loops**: build item lists with spreads, e.g. `..ids.enumerate().map(((i, n)) => sf.badge(n, i + 1))`.
 
 ## Contents
-1. Diagram · 2. Positioning · 3. Nodes · 4. Glyphs · 5. Edges · 6. Groups
-7. Annotations (brace / note / zoom / legend / badge / panel / text) · 8. Auto layout · 9. Text and math · 10. Output and checks
+1. setup · 2. diagram · 3. Positions · 4. Nodes · 5. Glyphs · 6. Edges and loops · 7. Groups and annotations
+8. Outside the canvas: legend, panels · 9. Math and text · 10. Colors · 11. Lint · 12. Single-file delivery
 
-## 1. `new Diagram(options)`
+## 1. `sf.setup(journal:, width:, height: auto, margin: 3pt, math: "sans")`  (use as `#show: sf.setup.with(...)`)
 
 | Option | Default | Description |
 |---|---|---|
-| `width` | `'double'` | `'single'` / `'onehalf'` / `'double'` (per journal) or mm |
-| `height` | `'auto'` | mm; auto = content height + margin |
-| `journal` | `'nature'` | `nature` `science` `cell` `pnas` `ieee` `neurips` `icml` `cvpr`: column widths, font sizes, label case |
-| `margin` | `4` | pt around content when height is auto |
-| `align` | `'center'` | horizontal placement of content on the fixed-width canvas, or `'left'` |
-| `title` | `'diagram'` | written into the SVG `<title>` |
-| `palette` | — | override colors, e.g. `{ orange: '#C0392B' }` (validate with `palette_report` first) |
-| `theme` | — | override theme tokens, e.g. `{ corner: 'circular' }`, `{ g2Scale: 1.4 }`, `{ radius: 3 }` |
+| `journal` | `"nature"` | `nature` `science` `cell` `pnas` `ieee` `neurips` `icml` `cvpr`: widths, font sizes, label case (same table as Python `sf.use`) |
+| `width` | `"double"` | `"single"` / `"onehalf"` / `"double"` (per journal), a length (`120mm`) or a number in mm |
+| `height` | `auto` | page height fits the content; set a length to force it |
+| `math` | `"sans"` | `"sans"`: variables in the body font's italic (matches Arial mathtext in the Python plots); `"serif"`: Typst's Computer Modern math (LaTeX look) |
 
-## 2. Positioning (choose one per item, in its options)
+The page is transparent, text is Arial-metric 7 pt (Nature), and sub/superscripts are kept ≥ the journal minimum.
+One figure per file; the content is centered on the fixed-width page.
 
-| Mode | Syntax | Description |
+## 2. `sf.diagram(..items, spacing: (18pt, 24pt), debug: false, lint: true)`
+
+Accepts every `sf.*` item below plus plain `fletcher.node` / `fletcher.edge`. `spacing` = (column gap, row gap)
+between cells; edge labels want ≥ 20pt column gaps. `debug: 1..3` shows fletcher's grid. Returns content.
+
+## 3. Positions (`pos`, the first argument of every node / glyph)
+
+| Form | Example | Notes |
 |---|---|---|
-| Absolute | `x, y` | center point (pt). Usually only the first item gets `x: 0, y: 0`; the canvas re-centers automatically |
-| Relative | `right: 'id'` / `left` / `above` / `below` | next to the reference; may be an array `['a','b']` (their bounding box) |
-|  | `gap` | distance to the reference (default 16) |
-|  | `align` | `'top'`/`'bottom'` when placed sideways, `'left'`/`'right'` when placed vertically; default center |
-|  | `dx, dy` | extra nudge |
-| Grid | `d.grid({ x0, y0, dx, dy })` + `at: [col, row]` | regular arrays |
-| Auto | no position + `d.layout({ dir })` | layered auto layout (§8) |
+| Grid cell | `(2, 0)` | column 2, row 0. Rows and columns size to their content, so centers align automatically. Fractions (`(1.5, 0)`) are allowed |
+| Next to an item | `sf.right-of(<grads>, gap: 24pt)` · `sf.left-of(...)` · `sf.below-of(<loss>, gap: 54pt, dx: -14pt)` · `sf.above-of(...)` | `gap` is edge-to-edge (glyph captions included); `dx` / `dy` nudge (dy > 0 = down). Relative items **float**: they don't stretch grid columns — use them for a compact detail row under a wide main row |
 
-Relative placement may reference items defined later; circular references throw.
+The referenced item must be an `sf` item of the same diagram.
 
-## 3. Nodes `d.node(id, options)`
+## 4. Nodes `sf.node(pos, label, ..)` and `sf.op(pos, ..)`
 
 | Option | Description |
 |---|---|
-| `label` | main text; supports `$math$` and `\n` |
-| `sub` | secondary text (6 pt grey) below the label |
-| `shape` | `rect` (default, rounded) `pill` `circle` `ellipse` `diamond` `cylinder` `doc` `io` `hexagon` `plain` (no frame) |
-| `tone` | `neutral` `primary` `accent` `secondary` `loss` `warm` `cool`, or `blue` `orange` `green` `purple` `amber` `sky` `grey`, or `#hex` |
-| `emphasis` | `true` = key new component: thick border, deeper fill, bold |
+| `label` | content; math welcome (`[Model $f_theta$]`); `\` breaks a line |
+| `sub` | secondary line (6 pt grey) under the label |
+| `shape` | `"rect"` (default, G2 rounded) `"pill"` `"circle"` `"ellipse"` `"diamond"` `"cylinder"` `"doc"` `"io"` `"hexagon"` `"plain"` (no frame) |
+| `tone` | `"neutral"` `"primary"` `"accent"` `"secondary"` `"loss"` `"warm"` `"cool"`, a palette key (`"blue"`…) or a color |
+| `emphasis` | `true` = the key new component: thicker border, deeper fill, bold |
 | `bold` / `dashed` | bold text / dashed border (optional or inference-only components) |
-| `w`, `h` | fixed size (default: auto-fit to text; `minW` 30, `minH` 17) |
-| `fill`, `stroke`, `strokeWidth`, `radius` | manual overrides (avoid); `radius` is the **visual radius** (what circular corner it should look like), default 2.5 pt |
-| `corner`, `smoothing` | `'g2'` (default, curvature-continuous iOS/Figma smooth corners) or `'circular'`; `smoothing` 0–1 (default 0.6, larger = longer transition). The actual G2 arc radius is `radius × g2Scale` (theme token, default 1.3) because equal-radius G2 corners read tighter |
-| `textAlign: 'left'` | left-aligned text (multi-line descriptions) |
+| `width`, `height` | fixed size (default: fit the text, min 30 × 17 pt); `pad-x`, `pad-y` (6pt) |
+| `text-align` | `center` (default) or `left` for multi-line descriptions |
+| `fill`, `stroke`, `stroke-width`, `radius` | manual overrides (avoid). `radius` is the **visual** radius (2.5pt) |
+| `corner`, `smoothing` | `"g2"` (default, curvature-continuous iOS/Figma corners) or `"circular"`; `smoothing` 0–1 (0.6). The drawn G2 radius is `radius × 1.3` (`sf.g2-scale`) because G2 corners read tighter |
 
-`d.sameSize(['a','b','c'], 'w'|'h'|'both')`: unify sizes (largest wins).
-`d.op(id, { symbol, d: 10, tone })`: small operator circle; `symbol` is `'+'` `'x'` `'.'` or any short text (`'σ'`, `'‖'`, `'$\\odot$'`).
+`sf.same-size((<a>, <b>, <c>), dim: "width" | "height" | "both")` — largest wins.
+`sf.op(pos, symbol: "+" | "x" | "." | [σ] | $dot.o$, d: 10pt, tone:, name:)` — small operator circle.
 
-## 4. Glyphs — with a `label` below
+## 5. Glyphs — `label:` is a caption hanging below (it does not shift the glyph off its row's axis)
 
-| Method | Main options | Use |
+| Function | Main options | Use |
 |---|---|---|
-| `d.matrix(id, o)` | `rows` `cols` `cell`(4.2) `values` (2-D, 0–1) `pattern`: `random` `lowrank` `diag` `band` `sparse` `causal` `attention`; `seed` `tone` | weights, Hessians, attention, covariance |
-| `d.vector(id, o)` | `n` `orient: 'v'|'h'` `values` `cell` `tone` | embeddings, parameters, gradient vectors |
-| `d.tensor(id, o)` | `depth` `sw` `sh` `dx` `dy` `tone` | feature maps, batches, stacked gradient history |
-| `d.plot(id, o)` | `series`: arrays or presets `decay` `noisy` `rise` `sine` `bell` `step`; `tones` `w` `h` | schematic loss curves / distributions (**not** data plots) |
-| `d.graph(id, o)` | `n` or `points` (0–1 coords) `edges` `highlight` (node indices) `r` | graph structure, network topology |
-| `d.mlp(id, o)` | `layers: [3,4,4,2]` `w` `h` | fully connected network |
-| `d.placeholder(id, o)` | `w` `h` `text` | placeholder for a photo / screenshot pasted later |
+| `sf.matrix(pos, ..)` | `rows` `cols` `cell: 4.2pt` `values` (2-D, 0–1; negative = empty) `pattern`: `"random"` `"lowrank"` `"diag"` `"band"` `"sparse"` `"causal"` `"attention"`; `seed` `tone` | weights, Hessians, attention, covariance |
+| `sf.vector(pos, ..)` | `n` `orient: "v"` / `"h"` `values` `cell` `tone` | embeddings, parameters, gradients |
+| `sf.tensor(pos, ..)` | `depth` `sw` `sh` `dx` `dy` `tone` | feature maps, batches, stacked gradient history |
+| `sf.plot(pos, ..)` | `series`: arrays or presets `"decay"` `"noisy"` `"rise"` `"sine"` `"bell"` `"step"`; `tones` `width` `height` | schematic loss curves (**not** data plots) |
+| `sf.graph(pos, ..)` | `n` or `points` (0–1) `edges` `highlight` (indices) `r` | graph structure, topology |
+| `sf.mlp(pos, ..)` | `layers: (3, 4, 4, 2)` `width` `height` | fully connected network |
+| `sf.placeholder(pos, ..)` | `width` `height` `body` | photo / screenshot pasted later |
 
-`seed` fixes random patterns so reruns look identical.
+`seed` fixes random patterns, so reruns look identical.
 
-## 5. Edges `d.edge(from, to, options)` / `d.chain([ids], options)`
+## 6. Edges `sf.edge(..)` and loops `sf.loop(..)`
 
-Endpoints: `'id'`, `'id.right'` (specific side), or a free point `{ x, y }`.
-
-| Option | Description |
-|---|---|
-| `route` | `'auto'` (default: straight if aligned, otherwise orthogonal with rounded bends) `'straight'` `'curve'` (cubic Bézier) `'below'` `'above'` `'left'` `'right'` (detours for feedback / skip connections, avoiding nearby items) |
-| `fromSide`, `toSide` | `right` `left` `top` `bottom`, override the automatic choice |
-| `fromOffset`, `toOffset` | shift the port along the side (pt), to separate multiple edges on one side |
-| `bend` | position of the orthogonal bend, 0–1 (default 0.5) |
-| `clearance` | distance between detours and items (default 9) |
-| `curvature` | curve bulge (default 0.45) |
-| `label` | edge label (6 pt grey, math ok); `labelPos` 0–1; `labelSide`: `above` `below` `left` `right` `center` (on the line with a white background) |
-| `style` | `'solid'` `'dashed'` `'dotted'` |
-| `tone` / `color` / `width` / `emphasis` | color and width; `emphasis` = 1.1 pt |
-| `head` / `tail` | `'arrow'` (default) `'open'` `'dot'` `'bar'` `'none'` `'both'` |
-| `feedback: true` | treated as a back edge by auto layout (excluded from layering) |
-
-Convention: solid = data / control flow; dashed = optional, inference-only, or indirect influence; accent color = new signals / loops produced by our method.
-
-## 6. Groups `d.group(id, members, options)`
-
-Members are item ids or other group ids (nesting). Edges with both ends inside the group (e.g. loops) are enclosed automatically.
+`sf.edge(from, to, ..)` is fletcher's `edge` with house styling. Endpoints are names (`<model>`), grid
+coordinates, or several vertices for an orthogonal route: `sf.edge(<conv>, (1, 5), (1, 1), <sample>)`.
 
 | Option | Description |
 |---|---|
-| `label`, `labelPos` | `top-left` (default) `top-right` `top-center` `bottom-left` `bottom-right` |
-| `tone` | very light tint of the tone as fill; a same-color square before the label (`labelDot: false` to disable) |
-| `dashed` | dashed border (common without fill) |
-| `fill` | `false` = transparent, or a color (e.g. `'#FFFFFF'` for zoom detail boxes) |
-| `pad`, `padX`, `radius`, `minW` | padding (default 7), visual corner radius (default 4), minimum width |
-| `corner`, `smoothing` | as for nodes; change globally with `new Diagram({ theme: { corner: 'circular' } })` |
+| positional content | the label, e.g. `sf.edge(<a>, <b>, $hat(y)$)` (6 pt grey) |
+| `label-pos` | `0.3`, or `(segment, 50%)` on multi-vertex edges |
+| `label-side` | `left` / `right` of the direction of travel, or `center` (on the line, white background) |
+| `style` | `"solid"` `"dashed"` `"dotted"` |
+| `tone` / `color` / `width` / `emphasis` | color and width (default 0.75 pt dark grey; `emphasis` = 1.1 pt) |
+| `head` / `tail` | `"arrow"` (default head) `"open"` `"dot"` `"bar"` `"none"`; or a fletcher marks string `"<->"`, `"-|>"`… |
+| `bend`, `corner`, `shift`, … | any fletcher edge option (`bend: 30deg` curves; `corner: right` makes an L) |
 
-## 7. Annotations
+`sf.loop(from, to, side: "below" | "above", depth: auto, clearance: 9pt, ..edge-options)` — feedback / iteration:
+leaves `from`, runs under (over) the row, enters `to`. `depth: auto` clears the tallest item between the two ends,
+captions included. Loops between group members are enclosed by the group automatically.
 
-| Method | Description |
+Convention: solid = data / control flow; dashed = optional, inference-only or indirect; accent color = new
+signals / loops produced by our method.
+
+## 7. Groups and annotations (drawn after layout, from exact positions)
+
+| Function | Description |
 |---|---|
-| `d.brace(members, { side, label, offset, depth })` | curly brace, `side`: `bottom` `top` `left` `right` |
-| `d.note(target, text, { side, dist, dx, dy, italic })` | leader line + italic note |
-| `d.zoom(source, detail, { pad })` | dashed box around `source`, two dashed lines to `detail` (item or group) |
-| `d.legend(items, { at: 'bottom'|'top', align: 'center' } or { x, y })` | `items`: `{ tone, label, kind: 'box'|'line'|'dashed'|'arrow' }`; without coordinates it goes below the content |
-| `d.badge(target, n, { corner, tone })` | numbered step dot (matching Algorithm steps in the text) |
-| `d.panel('a', { x, y })` | panel label (8 pt bold, canvas coordinates, default top-left); omit when assemble.py adds labels |
-| `d.text(id, { text, size, weight, italic, anchor, ...position })` | free text: column / row headers |
+| `sf.group(id, members, label:, tone:, dashed:, fill:, pad: 7pt, pad-x:, radius: 4pt, label-pos: "top-left")` | soft tinted container behind members (names, or ids of other groups for nesting); colored square before the label (`label-dot: false` to drop). `fill: white` + `dashed: true` for zoom-detail boxes. `label-pos`: `top-left` `top-right` `top-center` `bottom-left` `bottom-right` |
+| `sf.badge(target, n, corner: "top-left", tone:)` | numbered step dot (match Algorithm 1) |
+| `sf.zoom(source, detail, pad: 2.5pt)` | dashed outline around `source`, two dashed lines to `detail` (item or group) |
+| `sf.brace(members, label:, side: "bottom", offset: 4pt, depth: 4.5pt)` | curly brace; `side`: `bottom` `top` `left` `right` |
+| `sf.note(target, body, side: "left", dist: 12pt, italic: true)` | leader line + italic grey note |
 
-## 8. Auto layout `d.layout({ dir: 'LR'|'TB', rankGap, nodeGap })`
+## 8. Outside the canvas
 
-Applies to items **without any position**: longest-path layering along edges, barycenter ordering to reduce
-crossings, then nodes are pulled toward their neighbors so chains are straight. Back edges (`feedback: true`,
-detour routes, cycles) are ignored for layering. Good for flowcharts and medium DAGs; fine-tune with
-`rank: k` (force a layer) or switch to relative placement.
+| Function | Description |
+|---|---|
+| `sf.legend(items, gap: 10pt)` | row of keys; items `(tone: "accent", label: [proposed], kind: "box" \| "line" \| "dashed" \| "arrow")` |
+| `sf.panel("a", body, align: center)` | bold label at the top-left, body below (lowercase for Nature, uppercase for Science/Cell/PNAS) |
+| `sf.panels(..cells, columns: 2, gutter: 3mm, labels: auto)` | grid of labelled panels (`labels: none` if the cells carry labels) |
+| `sf.panel-label("a")` | the label alone |
 
-## 9. Text and math
+Compose a multi-panel figure with ordinary Typst: `#grid(columns: (89mm, 89mm), column-gutter: 5mm, sf.panel("b",
+flow), sf.panel("c", image("panel_c.pdf")))`. `image()` of a matplotlib PDF/SVG stays vector with real text in the
+PDF output. See `composition.md`.
 
-- Inside `$...$`: letters italic, digits / operators upright; `_`/`^` sub/superscripts (kept ≥ journal minimum); `{}` grouping;
-  `\frac{a}{b}` → a/b; `\sqrt{x}`; `\hat \bar \tilde \dot \vec`; `\mathbf \mathrm \text \mathcal \mathbb`;
-  Greek letters; `\nabla \partial \infty \sum \in \le \ge \approx \propto \times \cdot \odot \oplus \otimes \top \leftarrow \to \ell \|`;
-  `\min \max \arg\min \log \exp \softmax` (upright); `\,` thin space. Binary minus gets thin spaces automatically.
-- Text width is measured with an Arial-metric width table, so boxes auto-fit; no guessing sizes.
+## 9. Math and text
 
-## 10. Output and checks
+- Typst math: `$f_theta$`, `$hat(H)_t^(-1)$`, `$cal(D)_"train"$`, `$theta_(t+1) = theta_t - eta g_t$`, `$nabla$`,
+  `$t <- t+1$`, `$x in RR^d$`, `$U_r^top$`, `$cal(O)(d r)$`, `$dots$`, `$lambda I$`. Multi-letter subscripts need
+  quotes (`_"train"`) or parentheses (`_(t+1)`); a space separates variables (`d r`).
+- `math: "sans"` sets single letters in the sans italic, words and digits upright, symbols from the math font.
+- Avoid fractions in figure labels (`1/2` renders at script size); write `1\/2` or rephrase.
+- Text is measured by Typst itself, so boxes always fit their text.
 
-- `d.save(file, { preview: true })`: writes the SVG (layers: `layer-groups` → `layer-edges` → `layer-nodes` → `layer-annotations` → `layer-labels`),
-  prints lint, runs `check.py` to render a PNG (explains if no renderer is found). Returns the issue list.
-- `d.lint()`: overlaps, text on items / text, text overflow, off-canvas, edges through items / text / unrelated groups, short edges, zoom lines over text, group intrusion, too many hues, excessive height, edge crossing count.
-- `d.render()`: returns the SVG string only.
-- Exported helpers: `measure(str, size)`, `parseRich`, `roundRectPath`, `PALETTE`, `THEMES`, `tint`, `shade`, `mix`, `contrast`, `MM`.
+## 10. Colors
+
+`sf.palette` (= Python `PALETTES["scifig"]`), `sf.accent`, `sf.ink`, `sf.muted`, `sf.faint`, `sf.tone(name)` →
+`(base, fill, fill-strong, soft, stroke, dark)`, `sf.mix(a, b, t)`, `sf.tint(c, t)`, `sf.shade(c, t)` (same
+formulas as Python). Brand / journal colors: pass a color as `tone:` (`tone: rgb("#C0392B")`) or edit `palette`
+in scifig.typ together with `PALETTES` in palette.py; validate with `sf.palette_report` first.
+
+## 11. Lint
+
+`check.py fig.typ` / `sf.compile_typst` report two layers:
+- **geometry** (computed inside `sf.diagram` from exact positions): `overlap`, `group-intrusion`, `group-overlap`,
+  `edge-through`, `edge-short`, `crossings` (INFO);
+- **PDF** (the actual output): `width`, `height`, `font-min`, `font-max`, `font`, `clipped`, `text-overlap`,
+  `line-through-text`, `contrast`, `too-many-hues`, `raster`.
+Meanings and fixes: `schematic-design.md` §6.
+
+## 12. Single-file delivery
+
+`python <skill>/scripts/bundle.py fig1.typ` writes `standalone/fig1.typ`: scifig.typ inlined at the top, figure code
+below calling `node(...)` instead of `sf.node(...)` (Typst has no inline modules). Deliver that file.

@@ -848,5 +848,24 @@ def inset_zoom(ax, xlim, ylim, bounds=(0.55, 0.5, 0.42, 0.42), connectors=True):
     axins.set_facecolor("white")
     axins.set_gid("inset")
     if connectors:
-        r = ax.indicate_inset_zoom(axins, edgecolor=NEUTRALS["500"], lw=0.5, alpha=1.0)
+        ind = ax.indicate_inset_zoom(axins, edgecolor=NEUTRALS["500"], lw=0.5, alpha=1.0)
+        # matplotlib joins matching corners, so with the inset below the zoomed region a connector
+        # runs down through the inset's y tick labels. Join the facing edges instead (rect bottom ->
+        # inset top), which never crosses tick labels.
+        try:
+            cons = list(ind.connectors) if hasattr(ind, "connectors") else list(ind[1])
+            to_axes = ax.transData + ax.transAxes.inverted()
+            (rx0, ry0), (rx1, ry1) = to_axes.transform([(xlim[0], ylim[0]), (xlim[1], ylim[1])])
+            bx, by, bw, bh = bounds
+            if by + bh <= min(ry0, ry1) - 0.01:
+                from matplotlib.patches import ConnectionPatch
+                for c in cons:
+                    c.set_visible(False)
+                for xa, xb in ((xlim[0], 0.0), (xlim[1], 1.0)):
+                    cp = ConnectionPatch((xa, ylim[0]), (xb, 1.0), coordsA=ax.transData, coordsB=axins.transAxes,
+                                         color=NEUTRALS["500"], lw=0.5)
+                    cp.set_gid("inset-connector")
+                    ax.add_artist(cp)
+        except Exception:  # noqa: BLE001  (keep matplotlib's own connectors)
+            pass
     return axins

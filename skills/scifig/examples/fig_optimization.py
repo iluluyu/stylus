@@ -96,9 +96,9 @@ sf.performance_profile(axd["b"], cost, METHODS, colors=colors, highlight="Ours",
 sf.landscape(axd["c"], quad, (-2.7, 1.1), (-1.9, 1.5), traj, colors=colors, highlight="Ours",
              optimum=(0, 0), legend="upper left", arrows=0)
 
+axd["d"].set_xscale("log")                     # set scales before plotting: direct labels are placed in display space
 sf.pareto(axd["d"], pareto_pts, minimize=(True, False), colors=colors, highlight="Ours",
           xlabel="Compute (GPU h)", ylabel="Accuracy (%)")
-axd["d"].set_xscale("log")
 
 sf.ablation(axd["e"], abl_names, abl_vals, abl_err, ref=0, xlabel="Accuracy (%)")
 

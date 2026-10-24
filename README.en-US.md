@@ -144,9 +144,6 @@ the property of their authors:
   routing, journal print specs, scifig palette alignment, export paths) is
   ours. Kept / dropped / added inventory: `skills/design/PROVENANCE.md`.
 
-All examples in the writing skills are original; none are copied from the
-sources.
-
 ## License
 
 [MIT](LICENSE)

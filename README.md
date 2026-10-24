@@ -133,8 +133,6 @@ stylus/
   学术化改造（图类型路由、期刊打印规格、scifig 调色板对齐、导出链路）为本仓库所加。
   保留 / 删除 / 新增清单见 `skills/design/PROVENANCE.md`。
 
-写作类技能中的所有示例均为原创，未复制原文。
-
 ## 许可
 
 [MIT](LICENSE)

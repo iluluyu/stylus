@@ -54,6 +54,7 @@ Colors:   method -> color mapping (same METHODS order in every figure file); "ou
 | Journal size / font / format requirements | — | `references/journal-specs.md` |
 | Visual self-review before delivery | `scripts/check.py` | `references/critique-checklist.md` (**every time**) |
 | User will keep editing in Illustrator / Inkscape / Figma | — | `references/editing.md` |
+| Rapid HTML sketching: iterate schematic / graphical-abstract / Figure-1 layouts in the browser before committing, or compose schematic + scifig panels interactively | sibling skill `design` (HTML, same palette and journal specs) | its `built-in-skills/academic-figures.md` |
 
 The fastest start is the closest file in `examples/`: copy it, swap data and text. Target look:
 `examples/gallery/*.png` (glance at it when unsure what "good" looks like).

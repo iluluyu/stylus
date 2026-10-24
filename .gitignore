@@ -8,3 +8,7 @@ Thumbs.db
 
 # editors
 *.swp
+
+# python bytecode
+__pycache__/
+*.pyc

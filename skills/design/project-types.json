@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "source": "forked from JimLiu/baoyu-design skills/baoyu-design (MIT), commit 6530033; retargeted for academic figures in the stylus repo",
+  "projectTypes": [
+    {
+      "id": "method-overview",
+      "name": "Method overview / Figure 1",
+      "description": "Framework, pipeline, or system overview figure — the paper's first figure",
+      "skills": ["academic-figures", "hi-fi-design"],
+      "starters": ["design-canvas.jsx", "image-slot.js"]
+    },
+    {
+      "id": "schematic",
+      "name": "Concept / mechanism schematic",
+      "description": "示意图 — ideas, mechanisms, models, taxonomies; not data-driven",
+      "skills": ["academic-figures", "hi-fi-design"],
+      "starters": ["design-canvas.jsx"]
+    },
+    {
+      "id": "graphical-abstract",
+      "name": "Graphical abstract / TOC graphic",
+      "description": "Single-rectangle journal abstract figure; high information density, strong visual hierarchy",
+      "skills": ["academic-figures"],
+      "starters": ["design-canvas.jsx"]
+    },
+    {
+      "id": "flowchart",
+      "name": "Flowchart / algorithm diagram",
+      "description": "Workflow, decision flow, algorithm pseudocode-adjacent diagrams",
+      "skills": ["academic-figures", "data-visualization"],
+      "starters": ["design-canvas.jsx"]
+    },
+    {
+      "id": "data-figure",
+      "name": "Interactive data sketch",
+      "description": "Explore data shape in the browser before committing; final print version moves to scifig",
+      "skills": ["data-visualization", "academic-figures"],
+      "starters": ["chart-stage.js"]
+    },
+    {
+      "id": "deck",
+      "name": "Talk slides",
+      "description": "Conference talk, defense, 组会 — exportable to editable PPTX",
+      "skills": ["make-a-deck"],
+      "starters": ["deck-stage.js"]
+    },
+    {
+      "id": "doc",
+      "name": "Poster / one-pager",
+      "description": "Conference poster, handout, summary sheet meant to print as pages",
+      "skills": ["make-a-doc", "academic-figures"],
+      "starters": ["doc-page.js"]
+    },
+    {
+      "id": "wireframe",
+      "name": "Figure sketch exploration",
+      "description": "Low-fi layout exploration — many composition candidates fast, side by side",
+      "skills": ["wireframe", "academic-figures"],
+      "starters": ["design-canvas.jsx"]
+    },
+    {
+      "id": "figure-style-system",
+      "name": "Figure style system",
+      "description": "Author a reusable per-journal or per-lab figure token system (colors, type, components)",
+      "skills": ["design-system-authoring-guide", "create-design-system"],
+      "starters": ["design-canvas.jsx"]
+    }
+  ]
+}

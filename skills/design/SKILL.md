@@ -6,10 +6,8 @@ description: >-
   abstracts and TOC graphics, flowcharts & pipelines, architecture diagrams,
   quick interactive data sketches, and talk slide decks. Renders in the browser,
   iterates in a build → preview → fix loop, then exports print-true vector PDF,
-  300-dpi PNG, standalone HTML, or PPTX (talk decks). Shares its palette,
-  journal size specs, and figure-brief discipline with the sibling scifig skill
-  (scifig = final data plots in matplotlib/Typst; this skill = rapid HTML
-  illustration and layout). Use whenever the user wants a schematic,
+  300-dpi PNG, standalone HTML, or PPTX (talk decks). Use whenever the user
+  wants a schematic,
   示意图, 方法总览图, 作图, graphical abstract, TOC graphic, 概念图, 流程图,
   框架图, 算法示意图, a figure sketch or mockup for a paper / thesis / report,
   a scientific illustration, or slides for a talk / defense / 组会 — even a

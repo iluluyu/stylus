@@ -2,6 +2,16 @@ MIT License
 
 Copyright (c) 2025 iluluyu
 
+Scope note: this license covers this repository's own work. Third-party
+material kept inside `skills/design/` carries its own terms and is NOT
+covered by this MIT grant — in particular, the Claude Design material from
+Anthropic, PBC (`system-prompt.md`, `built-in-skills/`, `starter-components/`,
+upstream reference snapshots; rights stay with Anthropic, no license
+published — exception: `built-in-skills/frontend-design.md` is Apache 2.0),
+Jim Liu 宝玉's MIT tooling in `skills/design/agents/`, and the vendored
+packages (React, Babel, pptxgenjs, fflate — each keeps its own MIT license).
+See `skills/design/PROVENANCE.md` for the full layered breakdown.
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights

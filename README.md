@@ -128,10 +128,19 @@ stylus/
   G. M. Whitesides, "Whitesides' Group: Writing a Paper"
   （*Advanced Materials* **16**, 2004）；曼彻斯特大学 *Academic Phrasebank*。
 - **design** — fork 自 [JimLiu/baoyu-design](https://github.com/JimLiu/baoyu-design)
-  （MIT，© 2026 Jim Liu 宝玉）的 `skills/baoyu-design`（上游 commit `6530033`，2026-09-23）。
+  的 `skills/baoyu-design`（fork 基点 commit `6530033`，2026-09-23 / 上游 v1.3.0）。
   设计方法论（`system-prompt.md`）、starter 组件、PPTX 生成链路与 harness 参考来自上游；
   学术化改造（图类型路由、期刊打印规格、scifig 调色板对齐、导出链路）为本仓库所加。
-  保留 / 删除 / 新增清单见 `skills/design/PROVENANCE.md`。
+  保留 / 删除 / 新增清单与同步日志见 `skills/design/PROVENANCE.md`。
+  **注意许可分层**（随上游 `NOTICE.md`，2026-11 勘正）：上游作者 Jim Liu 宝玉的工具代码为 MIT；
+  但 `system-prompt.md`、`built-in-skills/`、`starter-components/` 等源自 Anthropic 的 Claude Design
+  材料**权利归 Anthropic、非 MIT**（例外：`frontend-design.md` 为 Apache 2.0）；详见
+  `skills/design/PROVENANCE.md` 的许可节。上游 v2.3.0（2026-10-30）已将原 skill 归档冻结
+  （移至 `archive/baoyu-design/`），后续重同步以该目录为准。
+- 上游 v2.x 另拆出了一个新 skill 家族（本地编辑器 + 人机协作）与一个独立的 **`dataviz`**
+  skill（图表选型启发式、四类配色规则、可运行的色盲安全/对比度验证器，JS/Python 双版本）。
+  本仓库**未内置** dataviz；做数据图选型/配色时可自行安装或参考：
+  `npx skills add JimLiu/baoyu-design --skill dataviz`（权利归 Anthropic、非 MIT）。
 
 ## 许可
 

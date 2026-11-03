@@ -137,12 +137,26 @@ the property of their authors:
   "Whitesides' Group: Writing a Paper" (*Advanced Materials* **16**, 2004);
   University of Manchester *Academic Phrasebank*.
 - **design** — forked from `skills/baoyu-design` in
-  [JimLiu/baoyu-design](https://github.com/JimLiu/baoyu-design) (MIT, © 2026
-  Jim Liu 宝玉; upstream commit `6530033`, 2026-09-23). The design methodology
+  [JimLiu/baoyu-design](https://github.com/JimLiu/baoyu-design) (fork base
+  commit `6530033`, 2026-09-23 / upstream v1.3.0). The design methodology
   (`system-prompt.md`), starter components, PPTX generation chain, and
   harness references are upstream work; the academic retarget (figure-type
   routing, journal print specs, scifig palette alignment, export paths) is
-  ours. Kept / dropped / added inventory: `skills/design/PROVENANCE.md`.
+  ours. Kept / dropped / added inventory and sync log: `skills/design/PROVENANCE.md`.
+  **License is layered** (corrected 2026-11 per upstream's `NOTICE.md`):
+  the maintainer's tooling is MIT, but `system-prompt.md`, `built-in-skills/`,
+  `starter-components/` and other Claude Design material **stays
+  Anthropic's and is not MIT** (exception: `frontend-design.md` is Apache 2.0);
+  see the license section of `skills/design/PROVENANCE.md`. Upstream v2.3.0
+  (2026-10-30) archived the original skill to `archive/baoyu-design/` (frozen);
+  future re-syncs target that path.
+- Upstream v2.x also split out a new skill family (local editors with
+  human/agent co-editing) and a standalone **`dataviz`** skill (chart-form
+  heuristic, four color rules, a runnable CVD-safe/contrast palette validator
+  in JS and Python). stylus does **not** vendor dataviz; install or consult it
+  yourself when picking chart forms and palettes:
+  `npx skills add JimLiu/baoyu-design --skill dataviz` (Anthropic's material,
+  not MIT).
 
 ## License
 

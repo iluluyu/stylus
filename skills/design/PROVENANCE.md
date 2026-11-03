@@ -2,11 +2,30 @@
 
 ## Upstream
 
-- **Source**: [`skills/baoyu-design`](https://github.com/JimLiu/baoyu-design/tree/main/skills/baoyu-design)
-  from the repository [JimLiu/baoyu-design](https://github.com/JimLiu/baoyu-design) by 宝玉 (Jim Liu)
-- **Upstream commit at fork time**: `6530033592bf7fa58bc1a5a2a2ad278da45213a9` (2026-09-23)
-- **License**: MIT © 2026 Jim Liu 宝玉 — carried forward; this fork lives in the
-  stylus repo under its MIT license
+- **Source**: originally
+  [`skills/baoyu-design`](https://github.com/JimLiu/baoyu-design/tree/main/skills/baoyu-design)
+  from the repository [JimLiu/baoyu-design](https://github.com/JimLiu/baoyu-design) by 宝玉 (Jim Liu).
+  **Upstream v2.3.0 (2026-10-30) archived the skill**: it now lives at
+  [`archive/baoyu-design`](https://github.com/JimLiu/baoyu-design/tree/main/archive/baoyu-design)
+  and is frozen there; upstream development moved to a new skill family
+  (`claude-design`, `claude-slides`, `claude-design-system`, `claude-dashboard`,
+  `claude-motion`, `dataviz`) built on prebuilt local editors. This fork does
+  not follow that re-platforming.
+- **Fork base commit**: `6530033592bf7fa58bc1a5a2a2ad278da45213a9` (2026-09-23, upstream v1.3.0)
+- **License**: three layers, mirroring upstream's `NOTICE.md` (added upstream
+  v2.4.1) —
+  1. Jim Liu 宝玉's own work (MIT): the agent tooling in `agents/` (except
+     vendored packages), plus upstream's local-agent prose.
+  2. **Not MIT, rights stay with Anthropic, PBC**: `system-prompt.md`,
+     `references/upstream-system-prompt.md`, `references/upstream-sync/`,
+     `built-in-skills/` (Claude Design's built-in skills) and
+     `starter-components/` (Claude Design's starter components) — material
+     upstream includes so the skill works as it does on claude.ai; Anthropic
+     has published no license for it. Exception:
+     `built-in-skills/frontend-design.md` is Anthropic's frontend-design skill
+     under **Apache License 2.0** (`built-in-skills/LICENSE-frontend-design.txt`).
+  3. Vendored third-party code keeps its own licenses (React, ReactDOM, Babel,
+     fflate, pptxgenjs — all MIT).
 - **What it is here**: an academic retarget of a general-purpose HTML design
   skill. The design methodology (`system-prompt.md`), harness references,
   starter components, PPTX generation chain, and design-system machinery are
@@ -16,12 +35,12 @@
 
 | Piece | Notes |
 |---|---|
-| `system-prompt.md` | Edited: academic routing table, starter list, skills list; video/napkin/social sections removed. Craft text is upstream. |
+| `system-prompt.md` | Edited: academic routing table, starter list, skills list; video/napkin/social sections removed. Craft text is upstream (Anthropic — not MIT, see Upstream). |
 | `references/claude.md`, `cursor.md`, `codex.md` | Harness tool docs; `claude.md` edited to drop its video-export section (pipeline removed) |
 | `references/upstream-system-prompt.md`, `references/upstream-sync/` | Untouched provenance/sync snapshot |
 | Starters: `design-canvas.jsx`(+patch), `chart-stage.js`, `deck-stage.js`(+patch), `doc-page.js`, `image-slot.js`, `data-overlay.js`, `tweaks-panel.jsx` | Unchanged (`data-overlay.js` kept as the engine of `design-feedback.md`) |
-| `agents/gen-pptx/` (incl. vendored pptxgenjs), `agents/build-preview.mjs`, `agents/lib/`, `agents/compile-design-system.mjs`, `agents/check-design-system.mjs`, `agents/import-design-system.mjs`, `agents/record-asset.mjs`, checker/probe/verifier agent docs, `agents/vendor/` (babel, react, react-dom, fflate), `agents/tests/` | Unchanged; `import-figma.test.mjs` removed with the figma importer |
-| built-in-skills (28 files): ask-the-user, create-design-system, data-visualization, design-components, design-feedback, design-system-authoring-guide, design-system-preview, export-as-pptx-editable, export-as-pptx-screenshots, frontend-design, generate-images, hi-fi-design, import-from-github, import-from-html, interactive-prototype, low-level-tweaks-api, make-a-deck, make-a-doc, make-tweakable, maps-geography, options-stack, read-pdf, save-as-pdf, save-as-standalone-html, speaker-notes, tweaks-protocol, use-design-system, web-research, wireframe | Unchanged upstream docs |
+| `agents/gen-pptx/` (incl. vendored pptxgenjs), `agents/build-preview.mjs`, `agents/lib/` (ds-core.mjs, import-design-system.mjs synced 2026-11 with upstream's path-containment fix #16), `agents/compile-design-system.mjs`, `agents/check-design-system.mjs`, `agents/record-asset.mjs`, checker/probe/verifier agent docs, `agents/vendor/` (babel, react, react-dom, fflate), `agents/tests/` | Upstream tooling (MIT); `import-figma.test.mjs` removed with the figma importer |
+| built-in-skills (28 files + `LICENSE-frontend-design.txt`): ask-the-user, create-design-system, data-visualization, design-components, design-feedback, design-system-authoring-guide, design-system-preview, export-as-pptx-editable, export-as-pptx-screenshots, frontend-design (Apache 2.0), generate-images, hi-fi-design, import-from-github, import-from-html, interactive-prototype, low-level-tweaks-api, make-a-deck, make-a-doc, make-tweakable, maps-geography, options-stack, read-pdf, save-as-pdf, save-as-standalone-html, speaker-notes, tweaks-protocol, use-design-system, web-research, wireframe | Upstream docs (Anthropic — not MIT, see Upstream) |
 
 ## Dropped (not relevant to academic figures)
 
@@ -59,11 +78,31 @@ the commit above — it is all still there.
 
 ## Re-syncing with upstream
 
-Upstream evolves; this fork diverged on purpose. To pull in an upstream fix:
+Upstream evolves; this fork diverged on purpose. Upstream v2.3.0 archived the
+skill, so the re-sync target is now the frozen `archive/baoyu-design/` tree
+(plus, occasionally, fixes ported by hand from the new skill family, as was
+the plan for the PPTX CJK font fallback). To pull in an upstream fix:
 
-1. Clone upstream, diff `skills/baoyu-design` against commit `6530033…`.
-2. For files in **Kept (unchanged)**: copy the new version over.
+1. Clone upstream, diff `archive/baoyu-design` against commit `6530033…`
+   (the fork base, where the skill lived under `skills/`).
+2. For files in **Kept (upstream, possibly edited)**: copy the new version over.
 3. For edited files (`system-prompt.md`): re-apply the upstream change, then
    re-check that no dropped-skill reference crept back in.
 4. `references/upstream-sync/` in upstream carries its own sync metadata —
    copying it updates the snapshot without touching operative files.
+
+### Sync log
+
+- **2026-11 (post-v2.8.2 audit)**: ported upstream's design-system
+  path-containment fix (#16 / commit `2b2c267`): `agents/import-design-system.mjs`,
+  `agents/lib/ds-core.mjs` (+ their tests) — an untrusted design system can no
+  longer read/copy files outside its folder via `../` specs, absolute paths or
+  out-pointing symlinks. Added `built-in-skills/LICENSE-frontend-design.txt`
+  and the `license:` line in `frontend-design.md`; rewrote the license section
+  above per upstream's `NOTICE.md`. Upstream's `SKILL.md` trigger-narrowing
+  (`a8004e7`) was **not** taken — our `SKILL.md` is a rewrite.
+- Out of scope for this fork, noted for the future: upstream's new skill family
+  (local editors with human/agent co-editing, comments, LAN sharing — v2.0–v2.8)
+  and its `dataviz` chart-design skill (chart-form heuristic, color rules,
+  runnable palette validator). Migrating to that platform would be a separate
+  project decision, not a re-sync.

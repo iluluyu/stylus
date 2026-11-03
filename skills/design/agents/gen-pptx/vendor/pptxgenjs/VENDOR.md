@@ -56,3 +56,35 @@ Only the occurrence inside `makeXmlSlide` — the similar tail strings in the no
 ```
 
 **Verification**: `npm test` (vendor.test.ts asserts the Patch 1 string is present in `src/gen-xml.ts` and that an injected `_timingXml` round-trips into the written .pptx at the schema position), then `npm run build` and a real export.
+
+## Patch 3: `eaFontFace` — override the East-Asian font slot — `src/gen-xml.ts` (×2) + `src/core-interfaces.ts`
+
+**Motivation**: PowerPoint has no font stack — a run's `<a:ea>` face was always its Latin `fontFace`. On a reader lacking that font, or when the font holds no CJK glyphs (Arial holds none), Chinese/Japanese/Korean text shows as boxes (JimLiu/baoyu-design issue #29, fixed there v2.8.2 for claude-slides). gen-pptx embeds no fonts, so it can never prove coverage: gen-pptx's `src/core/fonts.ts` (`eaFontFaceFor`) picks a script-appropriate Windows/Office face (Yu Gothic / Malgun Gothic / Microsoft JhengHei / Microsoft YaHei) for every run carrying Han/kana/Hangul, and passes it as `options.eaFontFace` from all four `addText` sites in `src/render/render-node.ts`. The Latin slot keeps the deck's real face; the override changes only `<a:ea>` (and `<a:endParaRPr>`'s ea for table cells).
+
+**Anchor 1** (run properties, inside `genXmlTextRunProperties`):
+
+```ts
+runProps += `<a:latin typeface="${opts.fontFace}" pitchFamily="34" charset="0"/><a:ea typeface="${opts.fontFace}" pitchFamily="34" charset="-122"/><a:cs typeface="${opts.fontFace}" pitchFamily="34" charset="-120"/>`
+```
+
+**Replace with** (ea slot honors `opts.eaFontFace` when set):
+
+```ts
+runProps += `<a:latin typeface="${opts.fontFace}" pitchFamily="34" charset="0"/>${opts.eaFontFace ? `<a:ea typeface="${opts.eaFontFace}" pitchFamily="34" charset="-122"/>` : `<a:ea typeface="${opts.fontFace}" pitchFamily="34" charset="-122"/>`}<a:cs typeface="${opts.fontFace}" pitchFamily="34" charset="-120"/>`
+```
+
+**Anchor 2** (endParaRPr, tablecell branch of `genXmlTextBody`):
+
+```ts
+strSlideXml += `<a:ea typeface="${opts.fontFace}" charset="0"/>`
+```
+
+**Replace with**:
+
+```ts
+strSlideXml += opts.eaFontFace ? `<a:ea typeface="${opts.eaFontFace}" charset="0"/>` : `<a:ea typeface="${opts.fontFace}" charset="0"/>`
+```
+
+**Anchor 3** (`TextPropsOptions`, `src/core-interfaces.ts`, after `fontFace?: string`): insert `eaFontFace?: string` (the patch carries a comment marking it VENDOR PATCH 3).
+
+**Verification**: `npm test` — `test/cjk-ea-font.test.ts` asserts the helper's script selection, that a CJK run with `eaFontFace` emits the fallback in `<a:ea>` (and not the Latin face), that mixed Latin+CJK boxes keep per-run slots, that the legacy three-slot behaviour is unchanged without `eaFontFace`, and that `render-node.ts` wires `eaFontFaceFor` at its four `addText` sites; then `npm run build` and a real CJK deck export opened on a machine without the deck's fonts.

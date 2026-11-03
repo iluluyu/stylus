@@ -39,7 +39,7 @@
 | `references/claude.md`, `cursor.md`, `codex.md` | Harness tool docs; `claude.md` edited to drop its video-export section (pipeline removed) |
 | `references/upstream-system-prompt.md`, `references/upstream-sync/` | Untouched provenance/sync snapshot |
 | Starters: `design-canvas.jsx`(+patch), `chart-stage.js`, `deck-stage.js`(+patch), `doc-page.js`, `image-slot.js`, `data-overlay.js`, `tweaks-panel.jsx` | Unchanged (`data-overlay.js` kept as the engine of `design-feedback.md`) |
-| `agents/gen-pptx/` (incl. vendored pptxgenjs), `agents/build-preview.mjs`, `agents/lib/` (ds-core.mjs, import-design-system.mjs synced 2026-11 with upstream's path-containment fix #16), `agents/compile-design-system.mjs`, `agents/check-design-system.mjs`, `agents/record-asset.mjs`, checker/probe/verifier agent docs, `agents/vendor/` (babel, react, react-dom, fflate), `agents/tests/` | Upstream tooling (MIT); `import-figma.test.mjs` removed with the figma importer |
+| `agents/gen-pptx/` (incl. vendored pptxgenjs), `agents/build-preview.mjs`, `agents/lib/` (ds-core.mjs, import-design-system.mjs synced 2026-11 with upstream's path-containment fix #16), `agents/compile-design-system.mjs`, `agents/check-design-system.mjs`, `agents/record-asset.mjs`, checker/probe/verifier agent docs, `agents/vendor/` (babel, react, react-dom, fflate), `agents/tests/` | Upstream tooling (MIT). Local patch 2026-11: CJK East-Asian font fallback in gen-pptx (vendor Patch 3, see `agents/gen-pptx/vendor/pptxgenjs/VENDOR.md`). `import-figma.test.mjs` removed with the figma importer |
 | built-in-skills (28 files + `LICENSE-frontend-design.txt`): ask-the-user, create-design-system, data-visualization, design-components, design-feedback, design-system-authoring-guide, design-system-preview, export-as-pptx-editable, export-as-pptx-screenshots, frontend-design (Apache 2.0), generate-images, hi-fi-design, import-from-github, import-from-html, interactive-prototype, low-level-tweaks-api, make-a-deck, make-a-doc, make-tweakable, maps-geography, options-stack, read-pdf, save-as-pdf, save-as-standalone-html, speaker-notes, tweaks-protocol, use-design-system, web-research, wireframe | Upstream docs (Anthropic — not MIT, see Upstream) |
 
 ## Dropped (not relevant to academic figures)
@@ -101,6 +101,15 @@ the plan for the PPTX CJK font fallback). To pull in an upstream fix:
   and the `license:` line in `frontend-design.md`; rewrote the license section
   above per upstream's `NOTICE.md`. Upstream's `SKILL.md` trigger-narrowing
   (`a8004e7`) was **not** taken — our `SKILL.md` is a rewrite.
+- **2026-11 (CJK PPTX fix)**: ported upstream's PowerPoint East-Asian font fix
+  (#29 / v2.8.2 commit `3ac5c4e`, applied there only to claude-slides) onto our
+  vendored gen-pptx: `eaFontFaceFor` in `agents/gen-pptx/src/core/fonts.ts`, an
+  `eaFontFace` option through vendored pptxgenjs (vendor Patch 3), wired at the
+  four `addText` sites in `src/render/render-node.ts`, tested by
+  `agents/gen-pptx/test/cjk-ea-font.test.ts`. CJK runs now name Yu Gothic /
+  Malgun Gothic / Microsoft JhengHei / Microsoft YaHei in PowerPoint's East-Asian
+  slot instead of the Latin face, so Chinese/Japanese/Korean deck text can no
+  longer render as boxes on machines without the deck's fonts.
 - Out of scope for this fork, noted for the future: upstream's new skill family
   (local editors with human/agent co-editing, comments, LAN sharing — v2.0–v2.8)
   and its `dataviz` chart-design skill (chart-form heuristic, color rules,

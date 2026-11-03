@@ -1,6 +1,7 @@
 import type { SlideNode } from "../types.ts";
 import { pxToInches, pxToPoints, clamp } from "../core/units.ts";
 import { parseColor, parseGradient, opacityToTransparency } from "../core/color.ts";
+import { eaFontFaceFor } from "../core/fonts.ts";
 import {
   extractPx,
   parseBorderRadius,
@@ -65,6 +66,9 @@ export function renderNodeToPptx(
     if (!text || node.rect.w < 0.5 || node.rect.h < 0.5 || style.visibility === "hidden") return;
     const coords = rectToPptx(node.rect, ctx);
     const fmt = textFormat(style, ctx.fontMap);
+    // CJK runs name a Windows/Office-safe face in PowerPoint's East-Asian slot
+    // (see core/fonts.ts eaFontFaceFor) so the text cannot render as boxes.
+    const eaFontFace = eaFontFaceFor(fmt.fontFace, text);
     const fontSize = fmt.fontSize ?? clamp(pxToPoints(extractPx(style.fontSize) || 16), 1, 400);
     const opacity = inheritedOpacity * clamp(parseFloat(style.opacity ?? "1") || 1, 0, 1);
     const widthPad = pxToInches(Math.max(8, node.rect.w * 0.03));
@@ -75,6 +79,7 @@ export function renderNodeToPptx(
       h: coords.h + pxToInches(4),
       margin: 0,
       fontFace: fmt.fontFace,
+      ...(eaFontFace ? { eaFontFace } : {}),
       fontSize,
       bold: fmt.bold,
       italic: fmt.italic,
@@ -306,6 +311,7 @@ export function renderNodeToPptx(
     const transform = textTransformFn(liStyle.textTransform);
     const cfg = listStyleConfig(listType);
     const indentPt = cfg.isNum ? Math.max(fontSize * 1.5, 14) : Math.max(fontSize * 0.7, 8);
+    const eaFontFace = eaFontFaceFor(fmt.fontFace, listItems.join(""));
     const lastLi = node.children[node.children.length - 1];
     const top = firstLi.rect.y - ctx.originY;
     const bottom = lastLi.rect.y + lastLi.rect.h - ctx.originY;
@@ -317,6 +323,7 @@ export function renderNodeToPptx(
       h: pxToInches(Math.max(bottom - top, 4)) + pxToInches(4),
       margin: 2,
       fontFace: fmt.fontFace,
+      ...(eaFontFace ? { eaFontFace } : {}),
       fontSize,
       bold: fmt.bold,
       italic: fmt.italic,
@@ -420,10 +427,12 @@ export function renderNodeToPptx(
     const transform = textTransformFn(style.textTransform);
     if (runs.length === 1) {
       const run = runs[0];
+      const eaFontFace = eaFontFaceFor(run.fmt.fontFace, run.text);
       const alpha = (1 - run.fmt.transparency / 100) * opacity;
       if (!nodeHref && run.href) opts.hyperlink = { url: run.href };
       Object.assign(opts, {
         fontFace: run.fmt.fontFace,
+        ...(eaFontFace ? { eaFontFace } : {}),
         fontSize: run.fmt.fontSize ?? opts.fontSize,
         bold: run.fmt.bold,
         italic: run.fmt.italic,
@@ -446,8 +455,10 @@ export function renderNodeToPptx(
       const preserveWs = isPreserveWhitespace(style.whiteSpace);
       const runOpts = (run: TextRun): Opts => {
         const alpha = (1 - run.fmt.transparency / 100) * opacity;
+        const eaFontFace = eaFontFaceFor(run.fmt.fontFace, run.text);
         return {
           fontFace: run.fmt.fontFace,
+          ...(eaFontFace ? { eaFontFace } : {}),
           fontSize: run.fmt.fontSize,
           bold: run.fmt.bold,
           italic: run.fmt.italic,

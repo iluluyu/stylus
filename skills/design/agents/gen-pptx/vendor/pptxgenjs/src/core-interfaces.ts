@@ -358,6 +358,10 @@ export interface TextBaseProps {
 	 * @example 'Arial' // Arial font
 	 */
 	fontFace?: string
+	// VENDOR PATCH 3 (see VENDOR.md): face for PowerPoint's East-Asian slot;
+	// when set it overrides fontFace in <a:ea> so CJK text names a font the
+	// reader's machine actually has, instead of the Latin face copied over.
+	eaFontFace?: string
 	/**
 	 * Font size
 	 * @example 12 // Font size 12

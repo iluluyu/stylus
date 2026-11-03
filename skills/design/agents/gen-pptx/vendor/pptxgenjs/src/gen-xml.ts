@@ -995,7 +995,8 @@ function genXmlTextRunProperties (opts: ObjectOptions | TextPropsOptions, isDefa
 		if (opts.glow) runProps += `<a:effectLst>${createGlowElement(opts.glow, DEF_TEXT_GLOW)}</a:effectLst>`
 		if (opts.fontFace) {
 			// NOTE: 'cs' = Complex Script, 'ea' = East Asian (use "-120" instead of "0" - per Issue #174); ea must come first (Issue #174)
-			runProps += `<a:latin typeface="${opts.fontFace}" pitchFamily="34" charset="0"/><a:ea typeface="${opts.fontFace}" pitchFamily="34" charset="-122"/><a:cs typeface="${opts.fontFace}" pitchFamily="34" charset="-120"/>`
+			// VENDOR PATCH 3 (see VENDOR.md): eaFontFace, when set, replaces the Latin face in the East-Asian slot.
+			runProps += `<a:latin typeface="${opts.fontFace}" pitchFamily="34" charset="0"/>${opts.eaFontFace ? `<a:ea typeface="${opts.eaFontFace}" pitchFamily="34" charset="-122"/>` : `<a:ea typeface="${opts.fontFace}" pitchFamily="34" charset="-122"/>`}<a:cs typeface="${opts.fontFace}" pitchFamily="34" charset="-120"/>`
 		}
 	}
 
@@ -1312,7 +1313,8 @@ export function genXmlTextBody (slideObj: ISlideObject | TableCell): string {
 			if (opts.fontFace) {
 				strSlideXml += `<a:endParaRPr lang="${opts.lang || 'en-US'}"` + (opts.fontSize ? ` sz="${Math.round(opts.fontSize * 100)}"` : '') + ' dirty="0">'
 				strSlideXml += `<a:latin typeface="${opts.fontFace}" charset="0"/>`
-				strSlideXml += `<a:ea typeface="${opts.fontFace}" charset="0"/>`
+				// VENDOR PATCH 3 (see VENDOR.md): eaFontFace, when set, replaces the Latin face in the East-Asian slot.
+				strSlideXml += opts.eaFontFace ? `<a:ea typeface="${opts.eaFontFace}" charset="0"/>` : `<a:ea typeface="${opts.fontFace}" charset="0"/>`
 				strSlideXml += `<a:cs typeface="${opts.fontFace}" charset="0"/>`
 				strSlideXml += '</a:endParaRPr>'
 			} else {

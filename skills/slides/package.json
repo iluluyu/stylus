@@ -1,0 +1,19 @@
+{
+  "name": "stylus-slides",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Self-contained research slide authoring and local export",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs && npm test --prefix agents/gen-pptx",
+    "typecheck": "npm run typecheck --prefix agents/gen-pptx",
+    "build": "npm run build --prefix agents/gen-pptx",
+    "serve": "node scripts/serve.mjs",
+    "standalone": "node scripts/standalone.mjs",
+    "test:smoke": "node test/browser-smoke.mjs",
+    "test:install": "node test/install-smoke.mjs"
+  }
+}

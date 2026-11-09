@@ -6,147 +6,99 @@
 
 # stylus
 
-面向 AI 编码智能体的**学术写作技能集** —— 按 [Agent Skills](https://agentskills.io/specification)
-规范打包，可加载进任何兼容该规范的智能体：Claude Code、Codex、dsh、zcode、Zed、
-opencode、pi 等。
+面向 AI 编码智能体的**学术写作、科研绘图与演示技能集**，遵循 [Agent Skills](https://agentskills.io/specification) 规范，适用于 Claude Code、Codex、Zed、dsh、zcode、opencode、pi 等兼容 Agent Skills 的智能体环境。
 
-stylus（拉丁语"铁笔"）专注一件事：**帮助科研人员完成学术写作与论文插图**。
-每个技能是一个自包含的 Markdown 文件夹 —— `SKILL.md` 承载工作流与核心规则，
-`references/` 存放按需加载的细则。写作类技能纯 Markdown、零依赖；`scifig`
-附带 Python / Typst 工具链与自动 lint，`design` 附带 HTML 脚手架与 Node 工具链，
-按需调用。零构建、不绑定厂商。
+stylus 帮助科研人员**写清论文、画清方法、讲清研究**。各个技能均支持单独安装与独立使用；写作规范无额外运行时依赖，科研绘图支持 Python 与 Typst，设计画布基于原生本地编辑器，演示文稿支持 HTML 浏览与 PPTX 导出。
 
-## 技能清单
+## 技能列表
 
 | 技能 | 简介 | 适用场景 |
 |---|---|---|
-| [math-writing](skills/math-writing/) | 数学写作规范：证明的散文式行文、公式的语法角色与标点、记号一致性、四 C 审校标准 | 撰写 / 修改 / 审校证明、定理、推导、LaTeX 论文草稿 |
-| [scientific-paper-writing](skills/scientific-paper-writing/) | 科研论文写作：结构（Whitesides）、句子（Gopen & Swan）、措辞（Manchester 短语库）三大支柱，Fast / Learn 双模式 | 规划 / 起草 / 修改 / 润色英文科研稿件（PRL、Nature、PRX 等） |
-| [scifig](skills/scifig/) | 科研绘图工具链：Nature / Science 级**可编辑矢量图**（SVG + PDF）—— 算法与优化结果图（收敛曲线、性能剖面、损失地形、Pareto 前沿、CD 图、消融等），方法示意图 / 流程图（Typst），多面板拼装，自动 lint + 渲染预览自评 | 为论文 / 报告绘制出版级图表、方法总览图、算法流程图，或把任何 plot 改成"Nature 风格" |
-| [design](skills/design/) | 学术插图工作台：用 **HTML 在浏览器里快速起稿并迭代**论文插图 —— 方法总览图（Figure 1）、概念 / 机理示意图、graphical abstract、流程图、交互式数据草图、报告幻灯（可导出 PPTX）；打印级画布约定（mm / pt / dpi），与 scifig 共享调色板与期刊规格，导出矢量 PDF / 300-dpi PNG（fork 自 baoyu-design） | 论文初步作图、快速对比多种构图、图文混排的示意图、组会 / 答辩 slides |
+| [math-writing](skills/math-writing/) | 数学写作规范：涵盖定理证明散文结构、公式语法标点、记号一致性与四 C 审校标准。 | 撰写、修改、翻译或审校数学定理、证明推导与 LaTeX 论文草稿。 |
+| [scientific-paper-writing](skills/scientific-paper-writing/) | 英文科研论文写作：融合 Whitesides 结构、Gopen & Swan 句式和曼彻斯特短语库，支持 Fast 与 Learn 双模式。 | 规划、起草、重构或润色高水平英文期刊论文（PRL、Nature 系列、PRX 等）。 |
+| [scifig](skills/scifig/) | 出版级矢量科研绘图：Python (matplotlib) 绘制数据图，Typst 绘制方法图与排版拼版，内置自动检查并导出 SVG/PDF/PNG。 | 绘制期刊规格的数据图、算法流程图、方法总览图及多子图拼版。 |
+| [design](skills/design/) | 原生科研构图画布：基于 claude-design (v2.12.1/7db9784)，用 `canvas.json` 与 `.dc.html` 构思方法示意与机理图，通过预编译本地编辑器预览与导出。 | 人机协同绘制论文 Figure 1、系统架构图、机理示意图与流程图。 |
+| [slides](skills/slides/) | 科研演说幻灯片：基于 HTML `deck-stage` 构建清晰叙事的 16:9 演示文稿，支持本地预览与导出为 PDF 或可编辑 PPTX。 | 制作组会报告、学术会议演讲、学位答辩幻灯片及课件。 |
 
-`math-writing` 管数学文本怎么写对，`scientific-paper-writing` 管整篇论文怎么写好，
-`scifig` 管论文里的图怎么画到能发表，`design` 管这些图怎么快速试出来。
+## 安装指南
 
-## 安装
-
-本仓库是技能合集，整仓克隆一次，再把需要的技能链接（或复制）到智能体的
-skills 目录即可：
+整仓克隆后，根据所用智能体将所需技能软链或复制至对应的 skills 目录：
 
 ```bash
 git clone https://github.com/iluluyu/stylus.git
+cd stylus
 ```
 
-### 一次克隆，多个智能体共用
+### 1. 软链接至智能体（推荐）
 
-Codex、Zed、dsh 都会读取共享目录 `~/.agents/skills/`，软链一次全部生效：
+以标准共享目录 `~/.agents/skills/` 为例（Codex、Zed、dsh 默认支持）：
 
 ```bash
-ln -s /path/to/stylus/skills/math-writing              ~/.agents/skills/math-writing
-ln -s /path/to/stylus/skills/scientific-paper-writing ~/.agents/skills/scientific-paper-writing
-ln -s /path/to/stylus/skills/scifig                   ~/.agents/skills/scifig
-ln -s /path/to/stylus/skills/design                   ~/.agents/skills/design
+mkdir -p ~/.agents/skills
+ln -s "$(pwd)/skills/math-writing"              ~/.agents/skills/
+ln -s "$(pwd)/skills/scientific-paper-writing" ~/.agents/skills/
+ln -s "$(pwd)/skills/scifig"                   ~/.agents/skills/
+ln -s "$(pwd)/skills/design"                   ~/.agents/skills/
+ln -s "$(pwd)/skills/slides"                   ~/.agents/skills/
 ```
 
-### 按智能体安装
+### 2. 单技能独立获取
 
-如果你的智能体使用独立的 skills 目录，把软链换成对应位置：
+如需单独提取某个技能，可直接复制或使用 `npx degit`：
 
-| 智能体 | skills 目录 |
+```bash
+# 复制现有目录
+mkdir -p ~/.agents/skills
+cp -r skills/math-writing ~/.agents/skills/
+
+# 或无需克隆直接下载
+mkdir -p ~/.agents/skills
+npx degit iluluyu/stylus/skills/math-writing ~/.agents/skills/math-writing
+```
+
+### 常见智能体技能目录
+
+| 智能体 | 技能目录路径 |
 |---|---|
-| Codex (OpenAI) | `~/.agents/skills/` |
-| Zed | `~/.agents/skills/` |
-| dsh (DeepSeek) | `~/.dsh/skills/`（也读取 `~/.agents/skills/`） |
-| zcode (Z.ai) | `~/.zcode/skills/` |
+| Codex (OpenAI) / Zed / dsh | `~/.agents/skills/` |
 | Claude Code | `~/.claude/skills/` |
+| dsh (专属) | `~/.dsh/skills/` |
+| zcode (Z.ai) | `~/.zcode/skills/` |
 | opencode | `~/.config/opencode/skills/` |
 | pi | `~/.pi/agent/skills/` |
 
-更新：在 stylus 目录里 `git pull`，软链自动跟随最新内容。
+## 依赖与快速使用
 
-### 只想要一个技能
+各技能按需索取运行时依赖：
 
-不想整仓克隆时，可以单独抽取某个技能文件夹：
+- **math-writing / scientific-paper-writing**：纯 Markdown 工作流与参考规范，无环境依赖，安装后即可提示智能体直接加载。
+- **scifig**：使用 Python（数据图表，如 `matplotlib`、`numpy`）与 Typst（方法示意与多面板拼版）；运行示例图校验：
+  ```bash
+  python skills/scifig/scripts/check.py skills/scifig/examples/fig_method.typ
+  ```
+  完整环境与字体依赖详见 [scifig SKILL.md](skills/scifig/SKILL.md)。
+- **design**：需要 Node.js 20+，内置全套预编译编辑器，无需 `npm install`：
+  ```bash
+  node skills/design/scripts/artifact.mjs open skills/design/examples/research-canvas
+  ```
+- **slides**：需要 Node.js 22.18+。本地预览（访问 `http://127.0.0.1:4311/examples/research-deck/index.html`）：
+  ```bash
+  node skills/slides/scripts/serve.mjs skills/slides 4311
+  ```
+  PPTX 导出工具链依赖 Chromium 与 Playwright，使用前需在工具目录安装依赖：
+  ```bash
+  npm ci --prefix skills/slides/agents/gen-pptx
+  npm exec --prefix skills/slides/agents/gen-pptx -- playwright install chromium
+  npm run build --prefix skills/slides/agents/gen-pptx
+  ```
 
-```bash
-npx degit iluluyu/stylus/skills/math-writing math-writing
-```
+## 内容来源
 
-### 网页版客户端（Claude.ai 等）
+- **math-writing**：改编自 John M. Lee 的 *Guidelines for Writing Proofs*（华盛顿大学）及 Academic writing 四 C 审校标准。
+- **scientific-paper-writing**：源自 Gopen & Swan 的 *The Science of Scientific Writing*、Whitesides 的 *Whitesides' Group: Writing a Paper* 与曼彻斯特大学 *Academic Phrasebank*。
+- **design**：源自 [baoyu-design v2.12.1](https://github.com/JimLiu/baoyu-design/tree/7db9784ac4f4974d78ab166c7db1c706c0481c3d) 的 `claude-design`，保留原生画布、本地编辑器与科研规范适配。
+- **slides**：基于 HTML `deck-stage` 组件与本地独立 PPTX 导出工具链，参考同版本 `claude-slides` 演说规范。
 
-把 `skills/<name>/` 打包成 zip 上传即可。注意
-[规范](https://agentskills.io/specification)要求文件夹名与技能 `name` 一致：
-解压后顶层必须是技能同名文件夹（如 `math-writing/`、`scifig/`、`design/`），
-不要多包一层 `stylus-main/`。
+## 许可证
 
-## 仓库结构
-
-```
-stylus/
-├── README.md / README.en-US.md    # 中英文文档（默认中文）
-├── LICENSE                        # MIT
-└── skills/
-    ├── math-writing/
-    │   ├── SKILL.md               # 核心规则 + 路由（触发时整体加载）
-    │   └── references/
-    │       ├── proof-writing.md       # 起草：证明写作规范
-    │       └── paper-checklist.md     # 审校：四 C 标准 + QA 清单
-    ├── scientific-paper-writing/
-    │   ├── SKILL.md               # 工作流：双模式 + 原则代码索引
-    │   └── references/
-    │       ├── structure.md               # P 系：论文结构
-    │       ├── sentences.md               # S 系：句子结构
-    │       ├── phrasing.md                # W 系：措辞
-    │       └── grammar-and-conventions.md # G/C 系：语法与物理写作惯例
-    ├── scifig/
-    │   ├── SKILL.md               # 绘图工作流：brief → 选图 → render-look-fix 循环
-    │   ├── scripts/               # Python 工具包 scifig + Typst 示意图形库 scifig.typ
-    │   ├── assets/                # matplotlib 样式（Nature 级排版参数）
-    │   ├── examples/              # 最小可运行示例 + 渲染效果 gallery
-    │   └── references/            # 图表目录 / 配色 / 期刊规格 / 组版 / 审图清单等
-    └── design/                    # HTML 学术插图工作台（fork 自 baoyu-design，见其 PROVENANCE.md）
-        ├── SKILL.md               # 入口：图类型路由 + brief → 画布 → 预览循环 → 导出
-        ├── system-prompt.md       # 设计方法论（上游核心 + 学术化路由改写）
-        ├── built-in-skills/       # 子技能；academic-figures.md 为学术领域层（规格 / 配色 / 导出 / scifig 桥接）
-        ├── starter-components/    # 画布 / 图表 / 幻灯 / 文档页脚手架
-        ├── agents/                # PPTX 生成、预览构建、样式系统工具链（Node，离线 vendor）
-        └── references/            # 各 harness（Claude / Cursor / Codex）工具参考 + 上游快照
-```
-
-技能内容一律用英文书写（产出对象是英文论文），但触发词同时支持中英文，
-例如"论文润色""帮我改证明""快速模式"。
-
-## 内容来源与致谢
-
-技能思想改编自以下公开材料，版权归各自作者：
-
-- **math-writing** — John M. Lee, *Guidelines for Writing Proofs*
-  （华盛顿大学 Math 300 讲义，2018 秋）；"Academic writing" 审校幻灯片
-  （四 C 原则 + 检查清单）。
-- **scientific-paper-writing** — G. D. Gopen & J. A. Swan,
-  "The Science of Scientific Writing"（*American Scientist* **78**, 1990）；
-  G. M. Whitesides, "Whitesides' Group: Writing a Paper"
-  （*Advanced Materials* **16**, 2004）；曼彻斯特大学 *Academic Phrasebank*。
-- **design** — fork 自 [JimLiu/baoyu-design](https://github.com/JimLiu/baoyu-design)
-  的 `skills/baoyu-design`（fork 基点 commit `6530033`，2026-09-23 / 上游 v1.3.0）。
-  设计方法论（`system-prompt.md`）、starter 组件、PPTX 生成链路与 harness 参考来自上游；
-  学术化改造（图类型路由、期刊打印规格、scifig 调色板对齐、导出链路）为本仓库所加。
-  保留 / 删除 / 新增清单与同步日志见 `skills/design/PROVENANCE.md`。
-  **注意许可分层**（随上游 `NOTICE.md`，2026-11 勘正）：上游作者 Jim Liu 宝玉的工具代码为 MIT；
-  但 `system-prompt.md`、`built-in-skills/`、`starter-components/` 等源自 Anthropic 的 Claude Design
-  材料**权利归 Anthropic、非 MIT**（例外：`frontend-design.md` 为 Apache 2.0）；详见
-  `skills/design/PROVENANCE.md` 的许可节。上游 v2.3.0（2026-10-30）已将原 skill 归档冻结
-  （移至 `archive/baoyu-design/`），后续重同步以该目录为准。
-- 上游 v2.x 另拆出了一个新 skill 家族（本地编辑器 + 人机协作）与一个独立的 **`dataviz`**
-  skill（图表选型启发式、四类配色规则、可运行的色盲安全/对比度验证器，JS/Python 双版本）。
-  本仓库**未内置** dataviz；做数据图选型/配色时可自行安装或参考：
-  `npx skills add JimLiu/baoyu-design --skill dataviz`（权利归 Anthropic、非 MIT）。
-
-## 许可
-
-[MIT](LICENSE)
-
-## 关键词
-
-学术写作 · 数学写作 · 论文润色 · 学术英语 · 科研写作 · 科研绘图 · 科研示意图 ·
-学术插图 · graphical abstract · 方法总览图 · HTML 作图 · LaTeX · Agent Skills ·
+本项目原创内容与整合工具代码采用 [MIT](LICENSE) 许可证；上游组件、编辑器快照与第三方库保留各自条款，详见 [design 来源说明](skills/design/PROVENANCE.md) 与 [slides 来源说明](skills/slides/PROVENANCE.md)。

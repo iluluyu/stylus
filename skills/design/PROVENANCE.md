@@ -1,117 +1,82 @@
-# PROVENANCE — where this skill comes from
+# Provenance and licenses
 
-## Upstream
+## Lineage versus current source
 
-- **Source**: originally
-  [`skills/baoyu-design`](https://github.com/JimLiu/baoyu-design/tree/main/skills/baoyu-design)
-  from the repository [JimLiu/baoyu-design](https://github.com/JimLiu/baoyu-design) by 宝玉 (Jim Liu).
-  **Upstream v2.3.0 (2026-10-30) archived the skill**: it now lives at
-  [`archive/baoyu-design`](https://github.com/JimLiu/baoyu-design/tree/main/archive/baoyu-design)
-  and is frozen there; upstream development moved to a new skill family
-  (`claude-design`, `claude-slides`, `claude-design-system`, `claude-dashboard`,
-  `claude-motion`, `dataviz`) built on prebuilt local editors. This fork does
-  not follow that re-platforming.
-- **Fork base commit**: `6530033592bf7fa58bc1a5a2a2ad278da45213a9` (2026-09-23, upstream v1.3.0)
-- **License**: three layers, mirroring upstream's `NOTICE.md` (added upstream
-  v2.4.1) —
-  1. Jim Liu 宝玉's own work (MIT): the agent tooling in `agents/` (except
-     vendored packages), plus upstream's local-agent prose.
-  2. **Not MIT, rights stay with Anthropic, PBC**: `system-prompt.md`,
-     `references/upstream-system-prompt.md`, `references/upstream-sync/`,
-     `built-in-skills/` (Claude Design's built-in skills) and
-     `starter-components/` (Claude Design's starter components) — material
-     upstream includes so the skill works as it does on claude.ai; Anthropic
-     has published no license for it. Exception:
-     `built-in-skills/frontend-design.md` is Anthropic's frontend-design skill
-     under **Apache License 2.0** (`built-in-skills/LICENSE-frontend-design.txt`).
-  3. Vendored third-party code keeps its own licenses (React, ReactDOM, Babel,
-     fflate, pptxgenjs — all MIT).
-- **What it is here**: an academic retarget of a general-purpose HTML design
-  skill. The design methodology (`system-prompt.md`), harness references,
-  starter components, PPTX generation chain, and design-system machinery are
-  upstream work; the academic layer and routing are ours.
+- Original fork base: JimLiu/baoyu-design **v1.3.0**, commit
+  `6530033592bf7fa58bc1a5a2a2ad278da45213a9` (2026-09-23).
+  This is historical lineage, not the current runtime or guidance.
+- Current adopted code and guidance: **v2.12.1**, commit
+  [`7db9784ac4f4974d78ab166c7db1c706c0481c3d`](https://github.com/JimLiu/baoyu-design/tree/7db9784ac4f4974d78ab166c7db1c706c0481c3d),
+  `skills/claude-design/`.
+- The previous local implementation (`dbe3f67` and subsequent drafts) is not
+  operative. Git retains the tracked local history; historical commit markers
+  do not describe the active runtime.
 
-## Kept (upstream, possibly edited)
+**The native platform is now adopted**, not merely compared: canvas.json,
+.dc.html Design Components, uploads, the complete precompiled local editor,
+and its native exports. No plain-HTML entry point or second exporter remains.
 
-| Piece | Notes |
+## Byte-preserved upstream material
+
+- `scripts/artifact.mjs`, `scripts/server.mjs`, and **all** of `scripts/editor/`
+  are copied byte for byte. No replacement editor, canvas dialect or exporter.
+- All of `artifact-type/reference/` is copied byte for byte. It is optional
+  lookup, not a suite of mandatory nested skills. Format, diagrams and print
+  are routed from SKILL.md; brand, design-system and web-app guidance is not
+  required for a scientific schematic.
+- Root upstream `NOTICE.md` is preserved in full as `NOTICE.md`;
+  upstream `LICENSE` is preserved in full as `LICENSE.upstream`.
+- `upstream-manifest.json` hashes the retained upstream files against the pin.
+  `npm test` checks those hashes without requiring the audit checkout.
+
+## Deliberate guidance changes only
+
+`SKILL.md` is an abridgement of the current upstream skill, still named `design`.
+It retains native create/revise paths, index shapes, exact support.js injection,
+Design Component skeleton, upload/check/open/archive contracts and separate
+HTML nodes/labels plus SVG connector conventions. No model is hard-coded.
+Scientific additions are data honesty, method/mechanism/graphical-abstract/
+flowchart scope, restrained white-background craft and export-verified mm/pt
+requirements. The upstream prohibition on unsolicited visual verification is
+replaced with proactive render → look → fix. Generic print type floors and
+sheet defaults yield to actual scientific publication requirements. Native PDF
+output tested here has a raster appearance with invisible selectable text, not
+vector artwork; export resolution varied between runs. Measurements and limits
+are in `references/export-validation.md`.
+
+Mandatory design-system discovery, product/web-app styling, comments, LAN,
+history and git-hook tutorials are omitted from the entry, **not removed from
+the runtime**. The unmodified editor still contains its full capabilities.
+`references/scientific.md` and `references/export-validation.md` document the
+small scientific delta and measured limitations rather than changing grammar.
+
+The old agents/DS tools, starter components, project-types.json, exporter and
+unrelated tests were removed. Historical prompt snapshots were removed from
+the runtime directory to avoid contradictory instructions and redundancy;
+git retains the original tracked history. The old
+`built-in-skills/academic-figures.md` is only a rule-free compatibility pointer
+for the unchanged scifig skill. Slides' independent tools are not dependencies.
+
+## Terms (mixed; not a package-wide MIT grant)
+
+| Material | Terms |
 |---|---|
-| `system-prompt.md` | Edited: academic routing table, starter list, skills list; video/napkin/social sections removed. Craft text is upstream (Anthropic — not MIT, see Upstream). |
-| `references/claude.md`, `cursor.md`, `codex.md` | Harness tool docs; `claude.md` edited to drop its video-export section (pipeline removed) |
-| `references/upstream-system-prompt.md`, `references/upstream-sync/` | Untouched provenance/sync snapshot |
-| Starters: `design-canvas.jsx`(+patch), `chart-stage.js`, `deck-stage.js`(+patch), `doc-page.js`, `image-slot.js`, `data-overlay.js`, `tweaks-panel.jsx` | Unchanged (`data-overlay.js` kept as the engine of `design-feedback.md`) |
-| `agents/gen-pptx/` (incl. vendored pptxgenjs), `agents/build-preview.mjs`, `agents/lib/` (ds-core.mjs, import-design-system.mjs synced 2026-11 with upstream's path-containment fix #16), `agents/compile-design-system.mjs`, `agents/check-design-system.mjs`, `agents/record-asset.mjs`, checker/probe/verifier agent docs, `agents/vendor/` (babel, react, react-dom, fflate), `agents/tests/` | Upstream tooling (MIT). Local patch 2026-11: CJK East-Asian font fallback in gen-pptx (vendor Patch 3, see `agents/gen-pptx/vendor/pptxgenjs/VENDOR.md`). `import-figma.test.mjs` removed with the figma importer |
-| built-in-skills (28 files + `LICENSE-frontend-design.txt`): ask-the-user, create-design-system, data-visualization, design-components, design-feedback, design-system-authoring-guide, design-system-preview, export-as-pptx-editable, export-as-pptx-screenshots, frontend-design (Apache 2.0), generate-images, hi-fi-design, import-from-github, import-from-html, interactive-prototype, low-level-tweaks-api, make-a-deck, make-a-doc, make-tweakable, maps-geography, options-stack, read-pdf, save-as-pdf, save-as-standalone-html, speaker-notes, tweaks-protocol, use-design-system, web-research, wireframe | Upstream docs (Anthropic — not MIT, see Upstream) |
+| Upstream local Node tooling and local-agent additions | Jim Liu 宝玉, MIT; `LICENSE.upstream` |
+| Adapted Artifact instructions, reference docs/font metadata, reconstructed editor and Anthropicons font | Anthropic, PBC; no published grant identified by upstream; **not MIT**; `NOTICE.md` |
+| Editor's bundled open-source dependencies | Individual terms in the complete `scripts/editor/third-party-licenses.txt` |
+| New local scientific prose, illustrative example and test code | iluluyu, MIT for these original additions only; `LICENSE` |
+| Development npm dependencies | Their own package terms; not vendored into the runtime |
 
-## Dropped (not relevant to academic figures)
+No Anthropic fonts, components or editor files are claimed as MIT. This is an
+independent community adaptation, not affiliated with or endorsed by Anthropic.
+The complete upstream NOTICE mentions other upstream packages not distributed
+here; retaining it does not imply those files are part of this skill.
 
-Video pipeline (`animated-video`, `export-as-video`, `exportable-video`,
-`sound-effects`, `animations*.jsx`, `gen-video/`), 3D (`3d-object.md`,
-`three-d-stage.js`), social media shells (facebook/instagram/linkedin/
-pinterest/reddit/tiktok/x/youtube/post-card/social-frames), UI mockup chrome
-(ios/android frames and shells, chrome-shell, macos/browser/file windows),
-`watercolor-illustration` + kit, `html-email`, `flier`, `trifold-brochure`,
-`social-media-content`, `website-landing-page`, `mobile-prototype`,
-`google-slides-safe`, `send-to-canva`, `send-to-figma`, `import-from-figma`
-(+ `agents/import-figma.mjs`, `vendor/fig-materialize.mjs`),
-`handoff-to-claude-code`, `something-cool`, `claude-api-in-prototypes`,
-`gemini-image`, `data-science`, `experiment-workflow`,
-hosted-tool stubs (`export-pptx-*.md` superseded by `export-as-pptx-*`),
-`SKILL.md` and `project-types.json` (both rewritten). Also edited in place:
-the Figma bullet of `design-system-authoring-guide.md` (dropped the link to
-the removed `import-from-figma.md`).
+## Updating
 
-Recovery: anything above can be copied back verbatim from the upstream repo at
-the commit above — it is all still there.
-
-## Added (ours)
-
-- `SKILL.md` — academic entry/orchestration (rewritten from upstream's)
-- `project-types.json` — academic figure-type routing (rewritten)
-- `built-in-skills/academic-figures.md` — the academic domain layer: figure
-  brief, 300-dpi print-true canvas convention (mm/pt→px), scifig-aligned
-  palette tokens, anti-slop rules, export paths, scifig handoff
-- `PROVENANCE.md` — this file
-- `agents/tests/project-types.test.mjs` — retargeted from the upstream 13-type
-  manifest to this fork's 9 academic types (the CI guard now pins OUR contract;
-  run with `node --test agents/tests/`)
-- Cross-link in `../scifig/SKILL.md` routing → this skill
-
-## Re-syncing with upstream
-
-Upstream evolves; this fork diverged on purpose. Upstream v2.3.0 archived the
-skill, so the re-sync target is now the frozen `archive/baoyu-design/` tree
-(plus, occasionally, fixes ported by hand from the new skill family, as was
-the plan for the PPTX CJK font fallback). To pull in an upstream fix:
-
-1. Clone upstream, diff `archive/baoyu-design` against commit `6530033…`
-   (the fork base, where the skill lived under `skills/`).
-2. For files in **Kept (upstream, possibly edited)**: copy the new version over.
-3. For edited files (`system-prompt.md`): re-apply the upstream change, then
-   re-check that no dropped-skill reference crept back in.
-4. `references/upstream-sync/` in upstream carries its own sync metadata —
-   copying it updates the snapshot without touching operative files.
-
-### Sync log
-
-- **2026-11 (post-v2.8.2 audit)**: ported upstream's design-system
-  path-containment fix (#16 / commit `2b2c267`): `agents/import-design-system.mjs`,
-  `agents/lib/ds-core.mjs` (+ their tests) — an untrusted design system can no
-  longer read/copy files outside its folder via `../` specs, absolute paths or
-  out-pointing symlinks. Added `built-in-skills/LICENSE-frontend-design.txt`
-  and the `license:` line in `frontend-design.md`; rewrote the license section
-  above per upstream's `NOTICE.md`. Upstream's `SKILL.md` trigger-narrowing
-  (`a8004e7`) was **not** taken — our `SKILL.md` is a rewrite.
-- **2026-11 (CJK PPTX fix)**: ported upstream's PowerPoint East-Asian font fix
-  (#29 / v2.8.2 commit `3ac5c4e`, applied there only to claude-slides) onto our
-  vendored gen-pptx: `eaFontFaceFor` in `agents/gen-pptx/src/core/fonts.ts`, an
-  `eaFontFace` option through vendored pptxgenjs (vendor Patch 3), wired at the
-  four `addText` sites in `src/render/render-node.ts`, tested by
-  `agents/gen-pptx/test/cjk-ea-font.test.ts`. CJK runs now name Yu Gothic /
-  Malgun Gothic / Microsoft JhengHei / Microsoft YaHei in PowerPoint's East-Asian
-  slot instead of the Latin face, so Chinese/Japanese/Korean deck text can no
-  longer render as boxes on machines without the deck's fonts.
-- Out of scope for this fork, noted for the future: upstream's new skill family
-  (local editors with human/agent co-editing, comments, LAN sharing — v2.0–v2.8)
-  and its `dataviz` chart-design skill (chart-form heuristic, color rules,
-  runnable palette validator). Migrating to that platform would be a separate
-  project decision, not a re-sync.
+Compare against the **current adopted pin**, not only v1.3.0. Copy runtime and
+license files intact, refresh hashes from the actual source, rerun structure,
+negative-format and browser round-trip/export tests. Record measured boundaries
+and any scientific exceptions. Never remove bundled notices or silently swap
+in a second runtime. Runtime needs Node 20+ only; npm/Chromium install is for
+independent development verification, not ordinary canvas use.

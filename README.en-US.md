@@ -6,164 +6,99 @@ English | [简体中文](README.md)
 
 # stylus
 
-**Academic-writing skills for AI coding agents** — packaged as
-[Agent Skills](https://agentskills.io/specification) that load in any
-skills-compatible agent: Claude Code, Codex, dsh, zcode, Zed, opencode, pi,
-and more.
+**Academic writing, scientific figures, and presentations for AI coding agents** — packaged as [Agent Skills](https://agentskills.io/specification), designed for Claude Code, Codex, Zed, dsh, zcode, opencode, pi, and other compatible agent environments.
 
-stylus (Latin for "pen") does one thing: **help researchers get academic
-writing and paper figures done well.** Each skill is a self-contained
-Markdown folder — a `SKILL.md` carrying the workflow and core rules, plus
-`references/` loaded only when a task needs them. The writing skills are pure
-Markdown with zero dependencies; `scifig` ships a Python / Typst toolkit with
-automatic lint, and `design` ships HTML scaffolds and a Node toolchain,
-invoked on demand. No build step, no vendor lock-in.
+stylus helps researchers **write clearly, draw clearly, and present clearly**. Each skill installs and functions independently: writing guides carry no runtime dependencies, scientific plotting leverages Python and Typst, design canvases use a bundled native local editor, and presentation decks support HTML browsing and PPTX export.
 
 ## Skills
 
-| Skill | What it does | Use it when |
+| Skill | Description | Best For |
 |---|---|---|
-| [math-writing](skills/math-writing/) | Mathematical writing standards: proofs as prose, formula grammar and punctuation, notation consistency, the four-C review frame | You write, edit, translate, or review proofs, theorems, derivations, or LaTeX drafts |
-| [scientific-paper-writing](skills/scientific-paper-writing/) | Scientific manuscript writing: structure (Whitesides), sentences (Gopen & Swan), phrasing (Manchester Phrasebank), with Fast / Learn modes | You plan, draft, revise, or polish English manuscripts (PRL, Nature, PRX, …) |
-| [scifig](skills/scifig/) | Publication-grade figures as **editable vector SVG + PDF**: algorithm & optimization plots (convergence curves, performance profiles, loss landscapes, Pareto fronts, CD diagrams, ablations…), method schematics / flowcharts (Typst), multi-panel assembly, automatic lint + rendered previews for self-critique | You make any paper figure, results plot, method overview or algorithm diagram, or want any plot turned "Nature-style" |
-| [design](skills/design/) | Academic-illustration workbench: **draft and iterate paper figures as HTML in the browser** — method overview (Figure 1), concept / mechanism schematics, graphical abstracts, flowcharts, interactive data sketches, talk slides (PPTX export); print-true canvas convention (mm / pt / dpi), palette and journal specs shared with scifig, vector PDF / 300-dpi PNG export (forked from baoyu-design) | First-pass figure making, comparing compositions fast, text-and-diagram mixed schematics, lab-meeting / defense slides |
-
-The skills are complementary: `math-writing` governs how mathematical text is
-written correctly; `scientific-paper-writing` governs how the whole paper is
-written well; `scifig` governs how its figures look publishable; `design`
-governs how those figures get sketched and explored quickly.
+| [math-writing](skills/math-writing/) | Mathematical writing standards: proof prose structure, equation grammar and punctuation, notation consistency, and four-C review criteria. | Drafting, revising, translating, or reviewing mathematical proofs, derivations, and LaTeX manuscripts. |
+| [scientific-paper-writing](skills/scientific-paper-writing/) | Scientific paper writing: structure (Whitesides), sentence flow (Gopen & Swan), and phrasing (Manchester Phrasebank), featuring Fast and Learn modes. | Planning, drafting, restructuring, or polishing manuscripts for top-tier journals (PRL, Nature portfolio, PRX, etc.). |
+| [scifig](skills/scifig/) | Publication-grade vector figures: Python (matplotlib) for data plots, Typst for schematics and multi-panel layouts, with automated linting to SVG/PDF/PNG. | Preparing journal-spec results plots, algorithm flowcharts, method overviews, and composite figures. |
+| [design](skills/design/) | Native scientific canvas: based on claude-design (v2.12.1/7db9784), creating method overviews and mechanisms via `canvas.json` and `.dc.html` with a prebuilt local editor. | Collaboratively drafting paper Figure 1, architecture diagrams, mechanisms, and flowcharts. |
+| [slides](skills/slides/) | Research presentations: narrative-driven 16:9 slide decks using HTML `deck-stage`, with local browser preview and export to PDF or editable PPTX. | Building lab meeting updates, conference talks, defense presentations, and lecture decks. |
 
 ## Installation
 
-This repository is a collection. Clone it once, then link (or copy) the
-skills you want into your agent's skills directory:
+Clone the repository once, then link or copy the desired skills into your agent's skills directory:
 
 ```bash
 git clone https://github.com/iluluyu/stylus.git
+cd stylus
 ```
 
-### One clone, many agents
+### 1. Symlink to Agents (Recommended)
 
-Codex, Zed, and dsh all read the shared directory `~/.agents/skills/`, so a
-set of symlinks serves several tools at once:
+Using the standard shared directory `~/.agents/skills/` (supported by Codex, Zed, dsh):
 
 ```bash
-ln -s /path/to/stylus/skills/math-writing              ~/.agents/skills/math-writing
-ln -s /path/to/stylus/skills/scientific-paper-writing ~/.agents/skills/scientific-paper-writing
-ln -s /path/to/stylus/skills/scifig                   ~/.agents/skills/scifig
-ln -s /path/to/stylus/skills/design                   ~/.agents/skills/design
+mkdir -p ~/.agents/skills
+ln -s "$(pwd)/skills/math-writing"              ~/.agents/skills/
+ln -s "$(pwd)/skills/scientific-paper-writing" ~/.agents/skills/
+ln -s "$(pwd)/skills/scifig"                   ~/.agents/skills/
+ln -s "$(pwd)/skills/design"                   ~/.agents/skills/
+ln -s "$(pwd)/skills/slides"                   ~/.agents/skills/
 ```
 
-### Per-agent directories
+### 2. Individual Skill Installation
 
-If your agent uses its own skills directory, link there instead:
+To obtain a single skill without a full setup, copy directly or download via `npx degit`:
 
-| Agent | Skills directory |
+```bash
+# Copy from a cloned repository
+mkdir -p ~/.agents/skills
+cp -r skills/math-writing ~/.agents/skills/
+
+# Or fetch directly without cloning
+mkdir -p ~/.agents/skills
+npx degit iluluyu/stylus/skills/math-writing ~/.agents/skills/math-writing
+```
+
+### Common Agent Directories
+
+| Agent | Skills Directory |
 |---|---|
-| Codex (OpenAI) | `~/.agents/skills/` |
-| Zed | `~/.agents/skills/` |
-| dsh (DeepSeek) | `~/.dsh/skills/` (also reads `~/.agents/skills/`) |
-| zcode (Z.ai) | `~/.zcode/skills/` |
+| Codex (OpenAI) / Zed / dsh | `~/.agents/skills/` |
 | Claude Code | `~/.claude/skills/` |
+| dsh (dedicated) | `~/.dsh/skills/` |
+| zcode (Z.ai) | `~/.zcode/skills/` |
 | opencode | `~/.config/opencode/skills/` |
 | pi | `~/.pi/agent/skills/` |
 
-Update later with `git pull` inside the stylus clone; the symlinks follow
-automatically.
+## Dependencies & Quick Start
 
-### Just one skill, no full clone
+Each skill declares its own runtime requirements:
 
-Pull a single skill folder without cloning the repository:
+- **math-writing / scientific-paper-writing**: Pure Markdown workflows and reference checklists with no runtime dependencies. Directly ingested by compatible agents.
+- **scifig**: Uses Python (for data plots via `matplotlib` and `numpy`) and Typst (for schematics and multi-panel composition); run check on an example figure:
+  ```bash
+  python skills/scifig/scripts/check.py skills/scifig/examples/fig_method.typ
+  ```
+  See [scifig SKILL.md](skills/scifig/SKILL.md) for full environment and font dependencies.
+- **design**: Requires Node.js 20+. Bundles the complete precompiled editor; no `npm install` needed:
+  ```bash
+  node skills/design/scripts/artifact.mjs open skills/design/examples/research-canvas
+  ```
+- **slides**: Requires Node.js 22.18+. Preview a deck locally (open `http://127.0.0.1:4311/examples/research-deck/index.html`):
+  ```bash
+  node skills/slides/scripts/serve.mjs skills/slides 4311
+  ```
+  The PPTX export toolchain requires Chromium and Playwright. Install dependencies in the agent directory before first export:
+  ```bash
+  npm ci --prefix skills/slides/agents/gen-pptx
+  npm exec --prefix skills/slides/agents/gen-pptx -- playwright install chromium
+  npm run build --prefix skills/slides/agents/gen-pptx
+  ```
 
-```bash
-npx degit iluluyu/stylus/skills/math-writing math-writing
-```
+## Sources & Credits
 
-### Chat clients (Claude.ai and similar)
-
-Zip the `skills/<name>/` folder and upload it as-is. The
-[spec](https://agentskills.io/specification) requires the folder name to
-match the skill's `name`: the top level of the zip must be the skill's own
-folder (`math-writing/`, `scifig/`, `design/`, …) — not `stylus-main/`.
-
-## Repository layout
-
-```
-stylus/
-├── README.md / README.en-US.md    # bilingual docs (Chinese by default)
-├── LICENSE                        # MIT
-└── skills/
-    ├── math-writing/
-    │   ├── SKILL.md               # core rules + routing (always loaded on trigger)
-    │   └── references/
-    │       ├── proof-writing.md       # drafting: proof-writing conventions
-    │       └── paper-checklist.md     # reviewing: four C's + QA checklists
-    ├── scientific-paper-writing/
-    │   ├── SKILL.md               # workflow: modes + principle-code index
-    │   └── references/
-    │       ├── structure.md               # P codes: paper structure
-    │       ├── sentences.md               # S codes: sentence structure
-    │       ├── phrasing.md                # W codes: wording
-    │       └── grammar-and-conventions.md # G/C codes: grammar & physics conventions
-    ├── scifig/
-    │   ├── SKILL.md               # figure workflow: brief → chart choice → render-look-fix loop
-    │   ├── scripts/               # Python package scifig + Typst schematic library scifig.typ
-    │   ├── assets/                # matplotlib style (Nature-grade typography)
-    │   ├── examples/              # minimal runnable examples + rendered gallery
-    │   └── references/            # chart catalog / color / journal specs / composition / critique checklist
-    └── design/                    # HTML academic-illustration workbench (forked from baoyu-design; see its PROVENANCE.md)
-        ├── SKILL.md               # entry: figure-type routing + brief → canvas → preview loop → export
-        ├── system-prompt.md       # design methodology (upstream core + academic routing edits)
-        ├── built-in-skills/       # sub-skills; academic-figures.md is the domain layer (specs / palette / export / scifig bridge)
-        ├── starter-components/    # canvas / chart / deck / doc-page scaffolds
-        ├── agents/                # PPTX generation, preview build, style-system toolchain (Node, offline vendor)
-        └── references/            # per-harness (Claude / Cursor / Codex) tool docs + upstream snapshot
-```
-
-Skill content is written in English (the output being written is English),
-but trigger phrases work in both languages — e.g. 论文润色, 帮我改证明,
-快速模式.
-
-## Sources and credits
-
-The skills adapt ideas from the following public materials, which remain
-the property of their authors:
-
-- **math-writing** — John M. Lee, *Guidelines for Writing Proofs*
-  (Math 300 handout, University of Washington, Autumn 2018); "Academic
-  writing" review slides (four C's + checklists).
-- **scientific-paper-writing** — G. D. Gopen & J. A. Swan, "The Science of
-  Scientific Writing" (*American Scientist* **78**, 1990); G. M. Whitesides,
-  "Whitesides' Group: Writing a Paper" (*Advanced Materials* **16**, 2004);
-  University of Manchester *Academic Phrasebank*.
-- **design** — forked from `skills/baoyu-design` in
-  [JimLiu/baoyu-design](https://github.com/JimLiu/baoyu-design) (fork base
-  commit `6530033`, 2026-09-23 / upstream v1.3.0). The design methodology
-  (`system-prompt.md`), starter components, PPTX generation chain, and
-  harness references are upstream work; the academic retarget (figure-type
-  routing, journal print specs, scifig palette alignment, export paths) is
-  ours. Kept / dropped / added inventory and sync log: `skills/design/PROVENANCE.md`.
-  **License is layered** (corrected 2026-11 per upstream's `NOTICE.md`):
-  the maintainer's tooling is MIT, but `system-prompt.md`, `built-in-skills/`,
-  `starter-components/` and other Claude Design material **stays
-  Anthropic's and is not MIT** (exception: `frontend-design.md` is Apache 2.0);
-  see the license section of `skills/design/PROVENANCE.md`. Upstream v2.3.0
-  (2026-10-30) archived the original skill to `archive/baoyu-design/` (frozen);
-  future re-syncs target that path.
-- Upstream v2.x also split out a new skill family (local editors with
-  human/agent co-editing) and a standalone **`dataviz`** skill (chart-form
-  heuristic, four color rules, a runnable CVD-safe/contrast palette validator
-  in JS and Python). stylus does **not** vendor dataviz; install or consult it
-  yourself when picking chart forms and palettes:
-  `npx skills add JimLiu/baoyu-design --skill dataviz` (Anthropic's material,
-  not MIT).
+- **math-writing**: Adapted from John M. Lee's *Guidelines for Writing Proofs* (University of Washington) and the Academic writing four-C review criteria.
+- **scientific-paper-writing**: Built on Gopen & Swan's *The Science of Scientific Writing*, Whitesides' *Whitesides' Group: Writing a Paper*, and the University of Manchester *Academic Phrasebank*.
+- **design**: Built on `claude-design` from [baoyu-design v2.12.1](https://github.com/JimLiu/baoyu-design/tree/7db9784ac4f4974d78ab166c7db1c706c0481c3d), retaining the native canvas format, local editor, and scientific constraints.
+- **slides**: Built on the HTML `deck-stage` component and standalone PPTX export toolchain, informed by `claude-slides` presentation guidance from the same release.
 
 ## License
 
-[MIT](LICENSE)
-
-## Keywords
-
-academic writing · mathematical writing · paper polishing · scientific
-writing · scientific figures · scientific illustration · graphical abstract ·
-method overview · HTML figures · LaTeX · Agent Skills ·
+Original content and integration tools are licensed under [MIT](LICENSE). Upstream components, editor snapshots, and third-party libraries retain their respective terms; see [design provenance](skills/design/PROVENANCE.md) and [slides provenance](skills/slides/PROVENANCE.md).

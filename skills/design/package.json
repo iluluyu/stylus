@@ -1,0 +1,17 @@
+{
+  "name": "stylus-design-native",
+  "version": "2.12.1-scientific.1",
+  "private": true,
+  "type": "module",
+  "description": "Scientific adaptation of the pinned native Design canvas; runtime needs no npm install",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "test:smoke": "node test/browser-smoke.mjs",
+    "test:install": "node test/install-smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.58.2",
+    "pdf-lib": "1.17.1"
+  }
+}

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Schematic binding method</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div style="position: relative; width: 688px; height: 360px; background: #ffffff; color: #17212b; font-family: Arial, sans-serif">
+<svg width="47" height="8" viewBox="0 0 47 8" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; left: 216px; top: 180px; width: 47px; height: 8px; overflow: visible; fill: none; stroke: #365f85; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-1" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#365f85" stroke="none" style="stroke: none; fill: #365f85; fill: context-stroke"></path></marker></defs><path d="M 0 4 L 43 4" marker-end="url(#dc-arrow-head-filled-1)"></path></svg>
+<svg width="47" height="8" viewBox="0 0 47 8" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; left: 416px; top: 180px; width: 47px; height: 8px; overflow: visible; fill: none; stroke: #365f85; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-2" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#365f85" stroke="none" style="stroke: none; fill: #365f85; fill: context-stroke"></path></marker></defs><path d="M 0 4 L 43 4" marker-end="url(#dc-arrow-head-filled-2)"></path></svg>
+<div style="position: absolute; left: 64px; top: 64px; font-size: 24px; font-weight: 600">From reactants to bound complex</div>
+<div style="position: absolute; left: 64px; top: 148px; width: 152px; height: 72px; box-sizing: border-box; padding: 8px; display: flex; align-items: center; justify-content: center; text-align: center; background: #edf4f9; border: 1px solid #365f85; border-radius: 4px; font-size: 16px"><span>Prepare reactants<br><i>A</i> + <i>B</i></span></div>
+<div style="position: absolute; left: 264px; top: 148px; width: 152px; height: 72px; box-sizing: border-box; padding: 8px; display: flex; align-items: center; justify-content: center; text-align: center; background: #edf4f9; border: 1px solid #365f85; border-radius: 4px; font-size: 16px"><span>Allow binding<br><i>k</i>₁ · Δ<i>G</i></span></div>
+<div style="position: absolute; left: 464px; top: 148px; width: 160px; height: 72px; box-sizing: border-box; padding: 8px; display: flex; align-items: center; justify-content: center; text-align: center; background: #faf1e8; border: 1px solid #8c582b; border-radius: 4px; font-size: 16px"><span>Bound complex<br><i>AB</i></span></div>
+<div style="position: absolute; left: 64px; top: 256px; font-size: 16px; line-height: 20px">Arrows indicate procedure order, not measured kinetics.</div>
+<div style="position: absolute; left: 64px; top: 284px; font-size: 14px; line-height: 18px; color: #465360">Schematic only — no measurements or thermodynamic values.</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":688,"height":360}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

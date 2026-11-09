@@ -1,0 +1,40 @@
+{
+  "description": "Regression prompts for independent native-canvas design and HTML-deck slides. Validate actual files, editor behavior, and exports; do not infer visual quality from file existence.",
+  "upstream_comparison": {
+    "version": "v2.12.1",
+    "commit": "7db9784ac4f4974d78ab166c7db1c706c0481c3d"
+  },
+  "executor_model": "openai-codex/gpt-6.1-sol",
+  "evals": [
+    {
+      "id": 1,
+      "skill": "design",
+      "name": "method-composition",
+      "prompt": "在 design 原生画布中为算法论文制作两个结构不同的方法示意图候选，以 project/canvas.json 和两个 .dc.html 交付，不另造普通HTML画布。英文，白底，每幅最终目标89×55 mm、标签7 pt；记录尺寸换算与需要核实的导出比例。内容只有五个对象：Input x、Encoder、Latent h、Correction δ、Prediction y；正确关系是 x 经 Encoder 得到 h，Correction δ 更新 h，h 再用于 Prediction y。Correction 用 #CF5B2A 强调，其余克制。不含实验结果，不生成图片，不编造性能数字。节点和标签应能在原生编辑器中单独编辑，连接线不能穿过其他节点。两个候选改变信息组织方式，而不是只换颜色。本次只生成文件，由主代理统一预览与导出验证；不需要再确认已给定的信息。",
+      "expected_output": "原生canvas.json和两个可被artifact check及编辑器读取的.dc.html，结构不同、科学关系正确、节点标签可单独修改；尺寸目标和导出边界明确。",
+      "files": [],
+      "expectations": [
+        "使用上游原生project/canvas.json及两个.dc.html，索引路径与实际文件一致，artifact check无问题。",
+        "两个候选的信息组织结构确实不同，而非仅换配色。",
+        "保留 x→Encoder→h、Correction δ→h、h→Prediction y，连线不穿过无关节点或标签。",
+        "可编辑节点和标签不是合并为一整张图片或整体SVG；声明最终尺寸与字体目标，并披露尚未完成的导出核实。",
+        "没有虚构实验数据、性能提升或未经请求的网页应用交互。"
+      ]
+    },
+    {
+      "id": 2,
+      "skill": "slides",
+      "name": "chinese-research-deck",
+      "prompt": "做一套3页中文组会HTML幻灯片，1920×1080、16:9，白底、深色文字、蓝色强调。第1页讲问题：单次实验不足以判断算法稳定性；第2页讲方案：多随机种子→统一评估→报告波动，三个步骤用简单流程图；第3页讲局限与下一步：目前尚无实验数据，下一步先确定种子数和评价指标。不得编造实验结果。不要演讲备注或动画。交付可离线打开、能切换页面并适配小视口的HTML deck和PPTX导出配置；本次不实际导出PPTX。不需要再确认已给定的信息。",
+      "expected_output": "可离线运行、固定16:9画布且小视口缩放正常的3页科研deck，内容忠实，导出配置与实际导航/页面选择器一致，无备注动画。",
+      "files": [],
+      "expectations": [
+        "恰好三页，分别完整呈现给定问题、三步方案及局限和下一步。",
+        "画布是1920×1080，页面可切换，小视口不会把幻灯片裁成不可见内容。",
+        "交付的HTML与素材可离线运行。",
+        "未添加演讲备注、动画或虚构实验结果。",
+        "PPTX配置有三项，页面导航和选择器与该deck一致。"
+      ]
+    }
+  ]
+}

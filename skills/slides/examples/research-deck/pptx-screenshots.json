@@ -1,0 +1,21 @@
+{
+  "mode": "screenshots",
+  "width": 1920,
+  "height": 1080,
+  "resetTransformSelector": "deck-stage",
+  "filename": "research-deck-screenshots",
+  "slides": [
+    {
+      "showJs": "document.querySelector('deck-stage').goTo(0)",
+      "selector": "deck-stage > [data-deck-active]"
+    },
+    {
+      "showJs": "document.querySelector('deck-stage').goTo(1)",
+      "selector": "deck-stage > [data-deck-active]"
+    },
+    {
+      "showJs": "document.querySelector('deck-stage').goTo(2)",
+      "selector": "deck-stage > [data-deck-active]"
+    }
+  ]
+}

@@ -80,7 +80,6 @@ Match the strength of the verb to the strength of the evidence.
 Avoid: *novel, unprecedented, groundbreaking, revolutionary, paradigm shift, remarkable, extremely, very, highly efficient* (without a number).
 
 - Replace adjectives with numbers: *a highly efficient scheme* → *a scheme that halves the CNOT count*.
-- "First" claims: mark `[CHECK: priority]` until the author confirms.
 - Let the result carry the significance; referees discount self-praise.
 
 - Self-check: *Is there a number or comparison that could replace this adjective?*

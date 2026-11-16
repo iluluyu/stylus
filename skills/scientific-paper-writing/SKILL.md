@@ -18,7 +18,7 @@ This file holds the workflow. Detailed rules and examples live in `references/` 
 - Never invent data, results, error bars, references, or citations. Mark missing support with `[CITE]` or `[EVIDENCE?]`.
 - Preserve the scientific meaning. If it is unclear, mark `[CHECK: meaning]` (Fast mode) or ask (Learn mode). Do not guess.
 - Do not change notation, symbols, units, or LaTeX commands unless they are inconsistent. Keep LaTeX compilable.
-- Do not inflate claims. Every "first" claim gets `[CHECK: priority]`.
+- Do not inflate claims; replace hype adjectives with concrete numbers or comparisons.
 - Keep the author's voice. Improve the text; do not rewrite for the sake of rewriting.
 - Explanations use the language the author uses with you (e.g., Chinese). Manuscript text is always English.
 
@@ -32,7 +32,7 @@ This file holds the workflow. Detailed rules and examples live in `references/` 
 | **Learn** | Learn quickly | Discuss changes in small batches, explain why, and wait for the author's decision. |
 
 - **Triggers.** Fast: "fast", "快速模式", "直接改". Learn: "learn", "学习模式", "讲解", "解释为什么".
-- **No mode given.** Ask once in one line, then keep that mode for the session. If no one can answer (unattended run), use Fast.
+- **No mode given.** Default to **Fast** and keep that mode for the session.
 - **Switching.** The author can switch at any time. In Fast mode, "explain #n" gives a Learn-style explanation of change n without switching modes.
 
 ## Step 2 — Identify the task and load only what it needs
@@ -92,7 +92,7 @@ Tag every change with one code. Full definitions, examples, and self-check quest
 - C1 Symbols defined, notation consistent · C2 Units · C3 Equations punctuated
 - C4 Figure, equation, and reference citations · C5 Abbreviations defined
 
-**Flags** (need the author's decision): `[CITE]` · `[EVIDENCE?]` · `[CHECK: priority]` · `[CHECK: meaning]`
+**Flags** (need the author's decision): `[CITE]` · `[EVIDENCE?]` · `[CHECK: meaning]`
 
 ## Revision order (both modes)
 
@@ -125,7 +125,7 @@ Minor fixes, grouped by code (each one still listed):
 - G1 ×3: ¶1 s1 "quantum circuit" → "the quantum circuit"; ¶2 s4 ...; ¶3 s2 ...
 
 ## Needs your decision
-- ¶3 s1 [CHECK: priority] "the first demonstration" — has this been verified?
+- ¶3 s1 [CHECK: meaning] "the reduced overhead" — compared against baseline A or B?
 
 ## Summary
 Most frequent: S3 ×4, G1 ×3, W1 ×2.
@@ -174,7 +174,7 @@ For planning or drafting tasks, ask the author to attempt the key step first (st
 `writing-error-log.md` records the author's recurring mistakes.
 
 - **Before revising:** read it and check the text for those patterns first.
-- **After revising:** propose new entries (Fast mode: one line under Summary; Learn mode: in the wrap-up). Add them only with the author's approval. If the file does not exist, offer to create it.
+- **After revising:** if the file already exists (or the author asks), propose new entries (Fast mode: one line under Summary; Learn mode: in the wrap-up) and add them only with approval. Do not offer to create it unprompted.
 
 ```
 ## <pattern name>

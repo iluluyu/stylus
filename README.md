@@ -19,6 +19,7 @@ stylus 帮助科研人员**写清论文、画清方法、讲清研究**。各个
 | [scifig](skills/scifig/) | 出版级矢量科研绘图：Python (matplotlib) 绘制数据图，Typst 绘制方法图与排版拼版，内置自动检查并导出 SVG/PDF/PNG。 | 绘制期刊规格的数据图、算法流程图、方法总览图及多子图拼版。 |
 | [design](skills/design/) | 原生科研构图画布：基于 claude-design (v2.12.1/7db9784)，用 `canvas.json` 与 `.dc.html` 构思方法示意与机理图，通过预编译本地编辑器预览与导出。 | 人机协同绘制论文 Figure 1、系统架构图、机理示意图与流程图。 |
 | [slides](skills/slides/) | 科研演说幻灯片：基于 HTML `deck-stage` 构建清晰叙事的 16:9 演示文稿，支持本地预览与导出为 PDF 或可编辑 PPTX。 | 制作组会报告、学术会议演讲、学位答辩幻灯片及课件。 |
+| [markdown-preview](skills/markdown-preview/) | 离线科研 Markdown 与图集预览：浅色学术排版、三线表、构建期 KaTeX 公式、固定自动目录、Mermaid 流程图、轻量数据图表与图片热刷新。 | 本地网页预览实验报告、论文笔记、科研图片集及导出单文件离线 HTML。 |
 
 ## 安装指南
 
@@ -40,6 +41,7 @@ ln -s "$(pwd)/skills/scientific-paper-writing" ~/.agents/skills/
 ln -s "$(pwd)/skills/scifig"                   ~/.agents/skills/
 ln -s "$(pwd)/skills/design"                   ~/.agents/skills/
 ln -s "$(pwd)/skills/slides"                   ~/.agents/skills/
+ln -s "$(pwd)/skills/markdown-preview"         ~/.agents/skills/
 ```
 
 ### 2. 单技能独立获取
@@ -90,6 +92,11 @@ npx degit iluluyu/stylus/skills/math-writing ~/.agents/skills/math-writing
   npm ci --prefix skills/slides/agents/gen-pptx
   npm exec --prefix skills/slides/agents/gen-pptx -- playwright install chromium
   npm run build --prefix skills/slides/agents/gen-pptx
+  ```
+- **markdown-preview**：需要 Node.js 22.18+。安装离线依赖后可直接由智能体后台拉起实时预览或导出单文件 HTML：
+  ```bash
+  npm ci --prefix skills/markdown-preview
+  node skills/markdown-preview/scripts/preview.mjs skills/markdown-preview/examples/research-report.md --detach
   ```
 
 ## 内容来源

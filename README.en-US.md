@@ -19,6 +19,7 @@ stylus helps researchers **write clearly, draw clearly, and present clearly**. E
 | [scifig](skills/scifig/) | Publication-grade vector figures: Python (matplotlib) for data plots, Typst for schematics and multi-panel layouts, with automated linting to SVG/PDF/PNG. | Preparing journal-spec results plots, algorithm flowcharts, method overviews, and composite figures. |
 | [design](skills/design/) | Native scientific canvas: based on claude-design (v2.12.1/7db9784), creating method overviews and mechanisms via `canvas.json` and `.dc.html` with a prebuilt local editor. | Collaboratively drafting paper Figure 1, architecture diagrams, mechanisms, and flowcharts. |
 | [slides](skills/slides/) | Research presentations: narrative-driven 16:9 slide decks using HTML `deck-stage`, with local browser preview and export to PDF or editable PPTX. | Building lab meeting updates, conference talks, defense presentations, and lecture decks. |
+| [markdown-preview](skills/markdown-preview/) | Offline academic Markdown & figure preview: light paper layout, booktabs three-line tables, build-time KaTeX math, fixed auto TOC, Mermaid diagrams, lightweight JSON charts, and live reload. | Previewing research notes, reports, and figure galleries locally or exporting single-file offline HTML. |
 
 ## Installation
 
@@ -40,6 +41,7 @@ ln -s "$(pwd)/skills/scientific-paper-writing" ~/.agents/skills/
 ln -s "$(pwd)/skills/scifig"                   ~/.agents/skills/
 ln -s "$(pwd)/skills/design"                   ~/.agents/skills/
 ln -s "$(pwd)/skills/slides"                   ~/.agents/skills/
+ln -s "$(pwd)/skills/markdown-preview"         ~/.agents/skills/
 ```
 
 ### 2. Individual Skill Installation
@@ -90,6 +92,11 @@ Each skill declares its own runtime requirements:
   npm ci --prefix skills/slides/agents/gen-pptx
   npm exec --prefix skills/slides/agents/gen-pptx -- playwright install chromium
   npm run build --prefix skills/slides/agents/gen-pptx
+  ```
+- **markdown-preview**: Requires Node.js 22.18+. After installing offline dependencies, start a live-reload preview or export a standalone HTML file:
+  ```bash
+  npm ci --prefix skills/markdown-preview
+  node skills/markdown-preview/scripts/preview.mjs skills/markdown-preview/examples/research-report.md --detach
   ```
 
 ## Sources & Credits

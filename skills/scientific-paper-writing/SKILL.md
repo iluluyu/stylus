@@ -21,7 +21,6 @@ This file holds the workflow. Detailed rules and examples live in `references/` 
 - Do not inflate claims. Every "first" claim gets `[CHECK: priority]`.
 - Keep the author's voice. Improve the text; do not rewrite for the sake of rewriting.
 - Explanations use the language the author uses with you (e.g., Chinese). Manuscript text is always English.
-- Once per manuscript, remind the author to check the target journal's current author guidelines and its policy on disclosing AI-assisted editing.
 
 ---
 

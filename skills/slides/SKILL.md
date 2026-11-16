@@ -65,8 +65,7 @@ Move derivations and secondary experiments to an appendix when useful.
 - Use contrast, direct labels, and redundant encodings rather than color alone.
 - Show images and diagrams without distortion; do not crop away scientific information.
 - Draw exact labels, tables, and simple diagrams as editable text and shapes.
-- Typeset complex equations reliably and keep their source. If exported as graphics,
-  disclose that they are not native editable PowerPoint equations; do not fake them with Unicode.
+- Typeset complex equations reliably and keep their source; do not fake them with Unicode.
 - Do not replace evidence with decorative imagery or an unsupported infographic.
 
 ## Build a real deck
@@ -116,8 +115,8 @@ See [notes and animations](references/notes-and-animations.md) only when needed.
 - PDF: one page per non-skipped slide, correct aspect ratio, no navigation chrome.
 - PPTX: editable native text and shapes by default; raster figures remain images.
 - Screenshot PPTX: only on explicit request for flat, non-editable image slides.
-- Not all HTML/CSS maps to native PowerPoint objects. Simplify unsupported constructs
-  or discuss limitations; never promise arbitrary HTML conversion or perfect editability.
+- Not all HTML/CSS maps to native PowerPoint objects; simplify unsupported constructs
+  and never promise arbitrary HTML conversion.
 - A dashboard, article, or landing page must first be reauthored as discrete slides.
 
 Run the bundled local CLI; there is no assumed hosted `gen_pptx` tool.
@@ -132,11 +131,11 @@ For the offline example, `npm run serve` from this directory starts the preview 
 3. Test forward/back navigation, first/last slide, and any click-gated builds.
 4. Check print pagination, slide dimensions, and final-state visibility in the PDF.
 5. Export PPTX and inspect diagnostics, slide count, native text, notes, and build count.
-6. If available, inspect the result in desktop PowerPoint; disclose when that was not done.
+6. If available, inspect the result in desktop PowerPoint.
 7. Re-export after edits; do not deliver stale artifacts or claim unperformed visual checks.
 
 Provide the HTML/assets, actual exports, and a preview URL or clear local-open instructions.
-State editable scope, font substitutions, static content, and unperformed checks plainly.
+Note export caveats only when an actual defect, fallback, or missing deliverable affects the result.
 Never mark a missing format as delivered. See [testing](references/testing.md) for repository checks.
 
 Guidance reviewed against baoyu-design **v2.12.1** (`7db9784`), adapted for research talks.

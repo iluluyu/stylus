@@ -177,9 +177,8 @@ not an `artifact.mjs export` command. Standalone is a viewing deliverable;
 keep the native project for editing. Never give an external import tool the
 local editor URL; give it a compatible exported file instead.
 
-CSS conversion (96px/in, 72pt/in) is only a planning estimate. Verify actual
-PDF page boxes, PNG pixel dimensions, and final physical-size type/strokes
-from the exported files. Do not promise native exact-mm controls, vector PDF,
-editable export text, a particular DPI or external-app import fidelity untested.
-Deliver the project folder, preview URL, checked exports, evidence/assumptions
-and any unsupported requirement. Example: `examples/research-canvas/project/`.
+CSS conversion (96px/in, 72pt/in) is only a planning estimate; verify exported
+PDF page boxes, PNG pixel dimensions, and final type/strokes from the output
+files. Deliver the project folder, preview URL, and checked exports (note any
+unsupported requirement only if an export actually misses it). Example:
+`examples/research-canvas/project/`.

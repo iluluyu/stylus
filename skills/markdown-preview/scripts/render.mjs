@@ -2,7 +2,11 @@ import MarkdownIt from "markdown-it";
 import katex from "katex";
 import hljs from "highlight.js";
 import { readFile } from "node:fs/promises";
-import { resolve, extname, dirname } from "node:path";
+import { createHash } from "node:crypto";
+import { resolve, extname } from "node:path";
+
+const { unescapeAll } = new MarkdownIt().utils;
+const digest = (text) => createHash("sha256").update(text).digest("hex");
 
 const MATH_ENVS = new Set([
   "equation", "equation*",
@@ -246,7 +250,7 @@ function slugify(text, seen) {
 export function extractFrontmatter(source) {
   const normalized = source.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
   const match = normalized.match(/^---\n([\s\S]*?)\n---\n?/);
-  if (!match) return { meta: {}, body: normalized };
+  if (!match) return { meta: {}, body: normalized, lineOffset: 0 };
   const meta = {};
   for (const line of match[1].split("\n")) {
     const kv = line.match(/^([A-Za-z0-9_-]+)\s*:\s*(.+)$/);
@@ -254,7 +258,7 @@ export function extractFrontmatter(source) {
       meta[kv[1].toLowerCase()] = kv[2].trim().replace(/^["']|["']$/g, "");
     }
   }
-  return { meta, body: normalized.slice(match[0].length) };
+  return { meta, body: normalized.slice(match[0].length), lineOffset: match[0].split("\n").length - 1 };
 }
 
 function parseChartConfig(raw) {
@@ -299,8 +303,11 @@ function parseChartConfig(raw) {
 }
 
 export function renderMarkdown(source, options = {}) {
-  const { meta, body } = extractFrontmatter(source);
+  const { meta, body, lineOffset } = extractFrontmatter(source);
   const toc = [];
+  const blocks = [];
+  let excerpt = "";
+  const anchorAttrs = (token) => token.meta?.previewBlock != null ? ` data-review-block="${token.meta.previewBlock}"` : "";
   const seenSlugs = new Map();
   let hasMermaid = false;
   let hasChart = false;
@@ -312,6 +319,25 @@ export function renderMarkdown(source, options = {}) {
   });
 
   md.use(mathPlugin);
+  md.inline.ruler.before("link", "wiki_link", (state, silent) => {
+    if (state.linkLevel || !state.src.startsWith("[[", state.pos)) return false;
+    const end = state.src.indexOf("]]", state.pos + 2);
+    if (end < 0 || end + 2 > state.posMax) return false;
+    const match = /^([^\[\]\n|]+)(?:\|([^\[\]\n]+))?$/.exec(state.src.slice(state.pos + 2, end));
+    if (!match || !match[1].trim()) return false;
+    const target = match[1].trim();
+    if (!silent) {
+      const token = state.push("wiki_link", "", 0);
+      token.content = match[2]?.trim() || target;
+      token.meta = { target };
+    }
+    state.pos = end + 2;
+    return true;
+  });
+  md.renderer.rules.wiki_link = (tokens, idx) => {
+    const token = tokens[idx];
+    return `<a class="wiki-link" href="#" data-wiki-target="${escapeHtml(token.meta.target)}">${escapeHtml(token.content)}</a>`;
+  };
 
   // Wrap tables so wide three-line tables scroll cleanly on narrow viewports
   const defaultTableOpen = md.renderer.rules.table_open || ((tokens, idx, opts, _env, self) => self.renderToken(tokens, idx, opts));
@@ -324,26 +350,37 @@ export function renderMarkdown(source, options = {}) {
   // Heading IDs, anchors, and TOC collection
   md.core.ruler.push("collect_toc", (state) => {
     const tokens = state.tokens;
+    const sourceLines = body.split("\n");
+    let heading = "";
+    let section = "";
+    const plain = (token) => (token?.children || [])
+      .filter((t) => !["html_inline", "image"].includes(t.type))
+      .map((t) => t.type.endsWith("break") ? " " : t.content).join("").trim();
     for (let i = 0; i < tokens.length; i++) {
-      if (tokens[i].type !== "heading_open") continue;
-      const open = tokens[i];
+      const token = tokens[i];
       const inline = tokens[i + 1];
-      const level = Number(open.tag.slice(1));
-      if (!inline || inline.type !== "inline") continue;
-
-      const plainText = (inline.children || [])
-        .filter((t) => t.type !== "html_inline")
-        .map((t) => t.content)
-        .join("")
-        .trim();
-
-      const id = slugify(plainText, seenSlugs);
-      open.attrSet("id", id);
-
-      if (level >= 1 && level <= 4) {
-        const htmlLabel = md.renderer.renderInline(inline.children || [], md.options, state.env);
-        toc.push({ level, id, text: plainText, html: htmlLabel });
+      if (token.type === "heading_open") {
+        const level = Number(token.tag.slice(1));
+        heading = plain(inline);
+        section = slugify(heading, seenSlugs);
+        token.attrSet("id", section);
+        if (level <= 4) {
+          // A TOC entry is itself a link; never render nested links into it.
+          const children = (inline.children || []).filter((t) => !["link_open", "link_close", "html_inline"].includes(t.type));
+          const htmlLabel = md.renderer.renderInline(children.map((t) => t.type === "wiki_link" ? { ...t, type: "text" } : t), md.options, state.env);
+          toc.push({ level, id: section, text: heading, html: htmlLabel });
+        }
       }
+      if (!excerpt && token.type === "paragraph_open") excerpt = [...plain(inline).replace(/\s+/g, " ")].slice(0, 160).join("");
+      if (!options.annotate || !token.map || token.hidden) continue;
+      const standard = ["heading_open", "paragraph_open", "list_item_open", "table_open"].includes(token.type);
+      if (!standard && !["fence", "code_block", "math_block", "html_block"].includes(token.type)) continue;
+      const [start, end] = token.map;
+      const id = blocks.length;
+      blocks.push({ id, start: start + lineOffset + 1, end: end + lineOffset, heading, section, kind: token.type,
+        fingerprint: digest(sourceLines.slice(start, end).join("\n")) });
+      if (standard) token.attrSet("data-review-block", String(id));
+      else token.meta = { ...token.meta, previewBlock: id };
     }
   });
 
@@ -356,16 +393,26 @@ export function renderMarkdown(source, options = {}) {
   md.renderer.rules.heading_close = (tokens, idx, opts, env, self) =>
     defaultHeadingClose(tokens, idx, opts, env, self);
 
+  for (const type of ["code_block", "math_block", "html_block"]) {
+    const base = md.renderer.rules[type];
+    md.renderer.rules[type] = (tokens, idx, ...args) => {
+      const html = base(tokens, idx, ...args);
+      const attrs = anchorAttrs(tokens[idx]);
+      return attrs ? `<div${attrs}>${html}</div>\n` : html;
+    };
+  }
+
   // Code fences: mermaid, chart, and highlight.js
   md.renderer.rules.fence = (tokens, idx) => {
     const token = tokens[idx];
     const info = (token.info || "").trim();
     const lang = info.split(/\s+/)[0].toLowerCase();
     const code = token.content;
+    const attrs = anchorAttrs(token);
 
     if (lang === "mermaid") {
       hasMermaid = true;
-      return `<div class="figure-block mermaid-wrap"><pre class="mermaid">${escapeHtml(code)}</pre></div>\n`;
+      return `<div class="figure-block mermaid-wrap"${attrs}><pre class="mermaid">${escapeHtml(code)}</pre></div>\n`;
     }
 
     if (lang === "chart") {
@@ -375,9 +422,9 @@ export function renderMarkdown(source, options = {}) {
         cfg.options = { animation: false, ...(cfg.options || {}) };
         const encoded = escapeHtml(JSON.stringify(cfg));
         const height = Number(cfg._height) || 240;
-        return `<div class="figure-block chart-wrap"><div class="chart-box" style="height:${height}px"><canvas class="md-chart" data-chart="${encoded}"></canvas></div></div>\n`;
+        return `<div class="figure-block chart-wrap"${attrs}><div class="chart-box" style="height:${height}px"><canvas class="md-chart" data-chart="${encoded}"></canvas></div></div>\n`;
       } catch (err) {
-        return `<div class="figure-block chart-error"><strong>Chart JSON error:</strong> ${escapeHtml(err.message)}<pre><code>${escapeHtml(code)}</code></pre></div>\n`;
+        return `<div class="figure-block chart-error"${attrs}><strong>Chart JSON error:</strong> ${escapeHtml(err.message)}<pre><code>${escapeHtml(code)}</code></pre></div>\n`;
       }
     }
 
@@ -388,7 +435,7 @@ export function renderMarkdown(source, options = {}) {
       highlighted = escapeHtml(code);
     }
     const langBadge = lang ? `<span class="code-lang">${escapeHtml(lang)}</span>` : "";
-    return `<div class="code-block">${langBadge}<pre><code class="hljs${lang ? ` language-${escapeHtml(lang)}` : ""}">${highlighted}</code></pre></div>\n`;
+    return `<div class="code-block"${attrs}>${langBadge}<pre><code class="hljs${lang ? ` language-${escapeHtml(lang)}` : ""}">${highlighted}</code></pre></div>\n`;
   };
 
   const html = md.render(body);
@@ -401,22 +448,41 @@ export function renderMarkdown(source, options = {}) {
     toc,
     hasMermaid,
     hasChart,
+    excerpt,
+    blocks,
+    ...(options.annotate && { revision: digest(source) }),
   };
 }
 
-export function rewritePageLinks(html, currentFileDir, pathToPageUrl) {
-  if (!pathToPageUrl || !pathToPageUrl.size) return html;
-  return html.replace(/(<a\b[^>]*?\bhref=["'])([^"']+)(["'][^>]*>)/gi, (full, prefix, href, suffix) => {
-    if (/^(?:https?:|mailto:|tel:|data:|#)/i.test(href)) return full;
-    const hashIdx = href.indexOf("#");
-    const rawPath = hashIdx >= 0 ? href.slice(0, hashIdx) : href;
-    const hash = hashIdx >= 0 ? href.slice(hashIdx) : "";
-    if (!/\.md$/i.test(rawPath)) return full;
-    const absTarget = resolve(currentFileDir, decodeURIComponent(rawPath));
-    const targetInfo = pathToPageUrl.get(absTarget);
-    if (!targetInfo) return full;
-    const q = suffix[0];
-    return `${prefix}${escapeHtml(targetInfo.href + hash)}${q} data-page-idx="${targetInfo.index}"${suffix.slice(1)}`;
+export function rewritePageLinks(html, { file, pagesByPath, resolveWiki, hrefFor, addLink }) {
+  const linkAttrs = (index, anchor) => {
+    const fragment = anchor ? `#${encodeURIComponent(anchor)}` : "";
+    return `href="${escapeHtml(hrefFor(index) + fragment)}" data-page-idx="${index}"`;
+  };
+  return html.replace(/<a\b(?:[^"'<>]|"[^"]*"|'[^']*')*>/gi, (tag) => {
+    const wiki = tag.match(/^<a class="wiki-link" href="#" data-wiki-target="([^"]*)">$/);
+    if (wiki) {
+      const [name, ...fragment] = unescapeAll(wiki[1]).split("#");
+      const heading = fragment.join("#").trim();
+      const target = resolveWiki(name.trim());
+      if (!target) return `<a class="wiki-link unresolved" aria-disabled="true" title="未找到唯一的笔记：${escapeHtml(name)}">`;
+      const anchor = target.page.toc.find((h) => h.text === heading)?.id || (heading ? slugify(heading, new Map()) : "");
+      addLink(target.index);
+      return `<a class="wiki-link" ${linkAttrs(target.index, anchor)}>`;
+    }
+    const href = tag.match(/\shref=(?:"([^"]*)"|'([^']*)')/i);
+    if (!href || !file) return tag;
+    const value = unescapeAll(href[1] ?? href[2]);
+    if (/^(?:[a-z][a-z\d+.-]*:|\/|[#?])/i.test(value)) return tag;
+    const [path, ...fragment] = value.split("#");
+    let target, anchor;
+    try {
+      target = pagesByPath.get(resolve(file, "..", decodeURIComponent(path.split("?")[0])));
+      anchor = decodeURIComponent(fragment.join("#"));
+    } catch { return tag; }
+    if (!target) return tag;
+    addLink(target.index);
+    return tag.replace(href[0], ` ${linkAttrs(target.index, anchor)}`);
   });
 }
 
@@ -462,7 +528,7 @@ export async function inlineLocalImages(html, baseDir) {
         const bytes = await readFile(filePath);
         cache.set(filePath, `data:${mime};base64,${bytes.toString("base64")}`);
       }
-      out = out.replace(full, `${prefix}${cache.get(filePath)}${suffix}`);
+      out = out.replace(full, () => `${prefix}${cache.get(filePath)}${suffix}`);
     } catch {
       // Leave missing image path untouched so the browser surfaces a clear broken-image cue
     }

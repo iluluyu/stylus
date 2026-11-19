@@ -1,6 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildReviewRail, documentPicker, documentsContent, safeJson, workspaceCss } from "./workspace.mjs";
 
 const SKILL_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const NODE_MODULES = resolve(SKILL_DIR, "node_modules");
@@ -59,53 +60,21 @@ function buildTocLinksHtml(toc) {
     .join("\n          ");
 }
 
-function buildSidebar(pages, activeIndex, toc, standalone) {
-  const isMulti = pages.length > 1;
-  const hasToc = toc.length > 0;
-  if (!isMulti && !hasToc) return "";
-
-  const pagesHtml = isMulti
-    ? `<div class="sidebar-section">
-        <div class="toc-header">
-          <span class="toc-title">页面 · Pages (${pages.length})</span>
-          <button class="toc-close-btn" id="toc-close-btn" type="button" title="收起侧栏 (t)">✕</button>
-        </div>
-        <nav class="page-nav" id="page-nav">
-          ${pages
-            .map((p, idx) => {
-              const href = standalone ? `#p=${idx}` : `/?p=${idx}`;
-              const activeCls = idx === activeIndex ? " active" : "";
-              return `<a class="page-link${activeCls}" href="${href}" data-page-idx="${idx}"><span class="page-num">${idx + 1}.</span><span class="page-label">${escapeHtml(p.title)}</span></a>`;
-            })
-            .join("\n          ")}
-        </nav>
-      </div>`
-    : "";
-
-  const tocHeader = isMulti
-    ? `<div class="toc-subheader">当前页目录 · Outline</div>`
-    : `<div class="toc-header">
-        <span class="toc-title">目录 · Contents</span>
+function buildSidebar(toc, docs) {
+  if (!docs && !toc.length) return "";
+  return `<aside class="toc-sidebar" id="toc-sidebar" aria-label="文档导航">
+    <div class="toc-scroll">
+      <div class="toc-header">
+        <span class="toc-title">目录</span>
         <button class="toc-close-btn" id="toc-close-btn" type="button" title="收起目录 (t)">✕</button>
-      </div>`;
-
-  const tocBody = hasToc
-    ? `<div class="sidebar-section">
-        ${tocHeader}
-        <nav class="toc-nav" id="toc-nav">
-          ${buildTocLinksHtml(toc)}
-        </nav>
-      </div>`
-    : isMulti
-      ? `<div class="sidebar-section">${tocHeader}<nav class="toc-nav" id="toc-nav"></nav></div>`
-      : "";
-
-  return `<aside class="toc-sidebar" id="toc-sidebar" aria-label="Navigation">
-      <div class="toc-scroll">
-        ${pagesHtml}
-        ${tocBody}
       </div>
-    </aside>`;
+      <nav class="toc-nav" id="toc-nav" aria-label="目录">${buildTocLinksHtml(toc) || '<span class="toc-link">本篇无章节</span>'}</nav>
+      ${docs ? `<section class="sidebar-documents" aria-labelledby="documents-title">
+        <h2 id="documents-title">文档</h2>
+        <nav id="documents-list" aria-label="所有文档">${docs}</nav>
+      </section>` : ''}
+    </div>
+  </aside>`;
 }
 
 const PAGE_CSS = `
@@ -176,25 +145,16 @@ body {
   text-overflow: ellipsis;
 }
 
+.topbar > div > .icon-btn { flex-shrink: 0; white-space: nowrap; }
+#help-btn { width: 30px; padding-inline: 0; font-weight: 650; }
+#print-btn { display: block; width: 100%; min-height: 32px; margin-bottom: 10px; border: 0; background: var(--bg-subtle); text-align: start; }
+#print-btn:hover { background: var(--accent-soft); color: var(--text-main); }
+
 .topbar-actions {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
-}
-
-.page-pager {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-right: 4px;
-}
-
-.page-indicator {
-  font-size: 0.84rem;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-  padding: 0 4px;
 }
 
 .icon-btn {
@@ -257,12 +217,6 @@ body.toc-collapsed .toc-sidebar {
   display: none;
 }
 
-.sidebar-section + .sidebar-section {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border-light);
-}
-
 .toc-header {
   display: flex;
   align-items: center;
@@ -280,15 +234,6 @@ body.toc-collapsed .toc-sidebar {
   text-transform: uppercase;
 }
 
-.toc-subheader {
-  font-size: 0.76rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  padding: 2px 8px 4px;
-}
-
 .toc-close-btn {
   border: none;
   background: transparent;
@@ -304,50 +249,10 @@ body.toc-collapsed .toc-sidebar {
   color: var(--text-main);
 }
 
-.page-nav, .toc-nav {
+.toc-nav {
   display: flex;
   flex-direction: column;
   gap: 1px;
-}
-
-.page-link {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-  padding: 4px 8px;
-  border-radius: 7px;
-  corner-shape: squircle;
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: 0.86rem;
-  line-height: 1.38;
-}
-
-.page-link:hover {
-  background: var(--bg-subtle);
-  color: var(--text-main);
-}
-
-.page-link.active {
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.page-num {
-  color: var(--text-faint);
-  font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
-  font-size: 0.8rem;
-}
-
-.page-link.active .page-num {
-  color: var(--accent);
-}
-
-.page-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .toc-link {
@@ -409,16 +314,12 @@ body.toc-collapsed .toc-sidebar {
 
 .paper h1 {
   font-size: 1.54rem;
-  margin: 0 0 0.85rem;
-  padding-bottom: 0.4rem;
-  border-bottom: 1.5px solid var(--border-light);
+  margin: 0 0 1rem;
 }
 
 .paper h2 {
   font-size: 1.24rem;
-  margin: 1.4rem 0 0.5rem;
-  padding-bottom: 0.22rem;
-  border-bottom: 1px solid var(--border-light);
+  margin: 1.6rem 0 0.5rem;
 }
 
 .paper h3 {
@@ -476,11 +377,7 @@ h4:hover .heading-anchor {
 
 .paper blockquote {
   margin: 0.85rem 0;
-  padding: 0.5rem 0.85rem;
-  border-left: 3px solid #94a3b8;
-  background: var(--bg-subtle);
-  color: var(--text-muted);
-  border-radius: 0 6px 6px 0;
+  color: var(--text-faint);
 }
 
 .paper blockquote > :first-child { margin-top: 0; }
@@ -528,10 +425,8 @@ h4:hover .heading-anchor {
 }
 
 .paper table {
-  width: auto;
-  min-width: 60%;
-  max-width: 100%;
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
   border-collapse: collapse;
   border-top: 1.6px solid var(--border-rule);
   border-bottom: 1.6px solid var(--border-rule);
@@ -549,7 +444,6 @@ h4:hover .heading-anchor {
   font-weight: 600;
   color: #111827;
   background: transparent;
-  white-space: nowrap;
 }
 
 .paper tbody td {
@@ -677,44 +571,6 @@ h4:hover .heading-anchor {
   font-size: 0.88rem;
 }
 
-/* Bottom page footer navigation (multi-page) */
-.page-footer-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 2rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border-light);
-}
-
-.page-footer-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  corner-shape: squircle;
-  color: var(--text-main);
-  text-decoration: none;
-  font-size: 0.95rem;
-  background: var(--bg-subtle);
-  max-width: 48%;
-}
-
-.page-footer-link:hover {
-  border-color: #cbd5e1;
-  background: #f1f5f9;
-  text-decoration: none;
-}
-
-.page-footer-link span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* Shortcuts popover */
 .shortcuts-popover {
   position: fixed;
@@ -786,7 +642,7 @@ h4:hover .heading-anchor {
   body {
     background: #ffffff;
   }
-  .topbar, .toc-sidebar, .heading-anchor, .page-footer-nav, .shortcuts-popover {
+  .topbar, .toc-sidebar, .heading-anchor, .shortcuts-popover {
     display: none !important;
   }
   .layout {
@@ -808,20 +664,6 @@ h4:hover .heading-anchor {
   }
 }
 `;
-
-function buildPageFooterHtml(pages, activeIndex, standalone) {
-  if (pages.length <= 1) return "";
-  const prev = activeIndex > 0 ? pages[activeIndex - 1] : null;
-  const next = activeIndex < pages.length - 1 ? pages[activeIndex + 1] : null;
-  const hrefFor = (idx) => (standalone ? `#p=${idx}` : `/?p=${idx}`);
-  const prevHtml = prev
-    ? `<a class="page-footer-link" href="${hrefFor(activeIndex - 1)}" data-page-idx="${activeIndex - 1}">← <span>${escapeHtml(prev.title)}</span></a>`
-    : `<span></span>`;
-  const nextHtml = next
-    ? `<a class="page-footer-link" href="${hrefFor(activeIndex + 1)}" data-page-idx="${activeIndex + 1}"><span>${escapeHtml(next.title)}</span> →</a>`
-    : `<span></span>`;
-  return `<nav class="page-footer-nav" aria-label="Page navigation">${prevHtml}${nextHtml}</nav>`;
-}
 
 export async function buildHtmlDocument(input, opts = {}) {
   const { standalone = false, liveReload = false, activeIndex = 0 } = opts;
@@ -861,33 +703,37 @@ export async function buildHtmlDocument(input, opts = {}) {
     }
   }
 
-  const sidebarHtml = buildSidebar(pages, currentIdx, current.toc, standalone);
+  const hrefFor = (index) => standalone ? `#p=${index}` : `/?p=${index}`;
+  const sidebarHtml = buildSidebar(current.toc, isMulti ? documentsContent(pages, currentIdx, hrefFor) : '');
   const hasSidebar = Boolean(sidebarHtml);
-  const footerNavHtml = buildPageFooterHtml(pages, currentIdx, standalone);
+  const review = !standalone && liveReload && Boolean(current.doc);
+  const railHtml = review ? buildReviewRail(current) : '';
+  const workspace = isMulti || review;
 
-  const pagerHtml = isMulti
-    ? `<div class="page-pager">
-        ${currentIdx > 0
-          ? `<a class="icon-btn" id="prev-page-btn" href="${standalone ? `#p=${currentIdx - 1}` : `/?p=${currentIdx - 1}`}" data-page-idx="${currentIdx - 1}" title="上一页 ([)">‹</a>`
-          : `<button class="icon-btn" id="prev-page-btn" type="button" disabled title="上一页 ([)">‹</button>`}
-        <span class="page-indicator" id="page-indicator">${currentIdx + 1} / ${pages.length}</span>
-        ${currentIdx < pages.length - 1
-          ? `<a class="icon-btn" id="next-page-btn" href="${standalone ? `#p=${currentIdx + 1}` : `/?p=${currentIdx + 1}`}" data-page-idx="${currentIdx + 1}" title="下一页 (])">›</a>`
-          : `<button class="icon-btn" id="next-page-btn" type="button" disabled title="下一页 (])">›</button>`}
-      </div>`
-    : "";
+  const titleHtml = isMulti
+    ? documentPicker(pages, currentIdx, hrefFor)
+    : `<span class="topbar-title" id="topbar-title">${escapeHtml(current.title)}</span>`;
+
+  const pagerHtml = isMulti ? `<nav class="page-stepper" aria-label="顺序阅读">
+    ${[-1, 1].map((step) => {
+      const target = currentIdx + step;
+      const label = step < 0 ? '上一篇' : '下一篇';
+      const enabled = Boolean(pages[target]);
+      return `<a class="page-step" data-step="${step}"${enabled ? ` href="${hrefFor(target)}"` : ' role="link" aria-disabled="true"'} aria-label="${label}" title="${escapeHtml(enabled ? pages[target].title : label)}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${step < 0 ? 'm7.5 2.5-3.5 3.5 3.5 3.5' : 'm4.5 2.5 3.5 3.5-3.5 3.5'}"/></svg></a>`;
+    }).join(`<span id="page-indicator" aria-live="polite" aria-atomic="true">${currentIdx + 1}/${pages.length}</span>`)}
+  </nav>` : '';
 
   const standaloneTemplates = standalone && isMulti
     ? pages
         .map(
           (p, i) =>
-            `<template data-page-tpl="${i}">${p.html}\n${buildPageFooterHtml(pages, i, true)}</template>\n<template data-toc-tpl="${i}">${buildTocLinksHtml(p.toc)}</template>`
+            `<template data-page-tpl="${i}">${p.html}</template>\n<template data-toc-tpl="${i}">${buildTocLinksHtml(p.toc) || '<span class="toc-link">本篇无章节</span>'}</template>\n<template data-documents-tpl="${i}">${documentsContent(pages, i, hrefFor)}</template>`
         )
         .join("\n")
     : "";
 
   const pagesMetaJson = standalone && isMulti
-    ? `<script>window.__MD_PAGES__=${JSON.stringify(pages.map((p) => ({ title: p.title })))};</script>`
+    ? `<script>window.__MD_PAGES__=${safeJson(pages.map((p) => ({ title: p.title })))};</script>`
     : "";
 
   const clientInitScript = `
@@ -916,6 +762,7 @@ export async function buildHtmlDocument(input, opts = {}) {
     toggleBtn.addEventListener("click", function () {
       if (isSmall()) {
         document.body.classList.toggle("toc-open-mobile");
+        if (rail && document.body.classList.contains('toc-open-mobile')) showRail(false);
       } else {
         document.body.classList.toggle("toc-collapsed");
       }
@@ -934,7 +781,7 @@ export async function buildHtmlDocument(input, opts = {}) {
   // ---- Scroll-spy + click highlight ----
   var clickLockUntil = 0;
   var tocNavEl = document.getElementById("toc-nav") || document.querySelector(".toc-nav");
-  var getTocLinks = function () { return Array.prototype.slice.call(document.querySelectorAll(".toc-link")); };
+  var getTocLinks = function () { return Array.prototype.slice.call(document.querySelectorAll("a.toc-link")); };
   var getHeadings = function () { return Array.prototype.slice.call(document.querySelectorAll(".paper h1[id], .paper h2[id], .paper h3[id], .paper h4[id]")); };
 
   function setActiveToc(id) {
@@ -959,7 +806,7 @@ export async function buildHtmlDocument(input, opts = {}) {
   function syncScroll() {
     var headings = getHeadings();
     if (Date.now() < clickLockUntil || !headings.length) return;
-    var atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+    var atBottom = window.scrollY > 4 && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
     if (atBottom) {
       var lastVisible = headings[headings.length - 1];
       for (var j = headings.length - 1; j >= 0; j--) {
@@ -996,7 +843,7 @@ export async function buildHtmlDocument(input, opts = {}) {
 
   // ---- Print & visualizers (Mermaid + Chart.js) ----
   var printBtn = document.getElementById("print-btn");
-  if (printBtn) printBtn.addEventListener("click", function () { window.print(); });
+  printBtn.addEventListener("click", function () { toggleHelp(false); helpBtn.focus(); window.print(); });
 
   function renderVisuals(scope) {
     var root = scope || document;
@@ -1047,50 +894,151 @@ export async function buildHtmlDocument(input, opts = {}) {
   }
   renderVisuals(document);
 
+  // ---- Right rail ----
+  var rail = document.getElementById('workspace-rail');
+  var railToggle = document.getElementById('rail-toggle');
+  function showRail(on) {
+    document.body.classList.toggle('rail-collapsed', !on);
+    document.body.classList.toggle('rail-open', on);
+    railToggle.setAttribute('aria-expanded', String(on));
+    if (on && isSmall()) document.body.classList.remove('toc-open-mobile');
+    if (!on && rail.contains(document.activeElement)) railToggle.focus();
+  }
+  var picker = document.getElementById('doc-picker');
+  var pickerTrigger = document.getElementById('doc-picker-trigger');
+  var pickerPanel = document.getElementById('doc-picker-panel');
+  var pickerQuery = document.getElementById('doc-picker-query');
+  var pickerLinks = picker ? Array.from(picker.querySelectorAll('[data-picker-key]')) : [];
+  function filterDocs() {
+    var words = pickerQuery.value.trim().toLowerCase().split(/\\s+/);
+    pickerLinks.forEach(function (link) {
+      link.hidden = !words.every(function (word) { return link.dataset.pickerKey.includes(word); });
+    });
+    picker.querySelector('.doc-picker-empty').hidden = pickerLinks.some(function (link) { return !link.hidden; });
+  }
+  function showPicker(open, restoreFocus) {
+    pickerPanel.hidden = !open;
+    pickerTrigger.setAttribute('aria-expanded', String(open));
+    if (open) {
+      if (isSmall()) document.body.classList.remove('toc-open-mobile');
+      pickerQuery.value = '';
+      filterDocs();
+      pickerQuery.focus({ preventScroll: true });
+    } else if (restoreFocus) {
+      pickerTrigger.focus();
+    }
+  }
+  if (picker) {
+    pickerTrigger.addEventListener('click', function () { showPicker(pickerPanel.hidden); });
+    pickerQuery.addEventListener('input', filterDocs);
+    picker.addEventListener('keydown', function (event) {
+      if (pickerPanel.hidden) return;
+      if (event.key === 'Escape' && !event.isComposing) {
+        event.preventDefault();
+        event.stopPropagation();
+        showPicker(false, true);
+      } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        var visible = pickerLinks.filter(function (link) { return !link.hidden; });
+        var index = visible.indexOf(document.activeElement);
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.key === 'ArrowDown') visible[Math.min(index + 1, visible.length - 1)]?.focus();
+        else if (index > 0) visible[index - 1].focus();
+        else pickerQuery.focus();
+      } else if (event.key === 'Enter' && event.target === pickerQuery) {
+        event.preventDefault();
+        pickerLinks.find(function (link) { return !link.hidden; })?.click();
+      }
+    });
+    picker.addEventListener('focusout', function (event) {
+      if (event.relatedTarget && !picker.contains(event.relatedTarget)) showPicker(false);
+    });
+    document.addEventListener('click', function (event) {
+      if (!picker.contains(event.target) && !pickerPanel.hidden) showPicker(false);
+    });
+    pickerPanel.addEventListener('click', function (event) {
+      var link = event.target.closest('[data-picker-key]');
+      if (!link || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      showPicker(false, true);
+      if (link.hasAttribute('aria-current')) {
+        event.preventDefault();
+      }
+    });
+  }
+  if (rail) {
+    railToggle.setAttribute('aria-expanded', String(!isSmall()));
+    railToggle.addEventListener('click', function () {
+      showRail(isSmall() ? !document.body.classList.contains('rail-open') : document.body.classList.contains('rail-collapsed'));
+    });
+    document.getElementById('rail-close').addEventListener('click', function () { showRail(false); railToggle.focus(); });
+    rail.addEventListener('review:open', function () { showRail(true); });
+    rail.addEventListener('review:close', function () { showRail(false); });
+  }
+  var docsNav = document.getElementById('documents-list');
+  if (docsNav) {
+    docsNav.addEventListener('click', function (event) {
+      var button = event.target.closest('.doc-expand');
+      if (!button) return;
+      var open = button.getAttribute('aria-expanded') !== 'true';
+      button.setAttribute('aria-expanded', String(open));
+      document.getElementById(button.getAttribute('aria-controls')).hidden = !open;
+    });
+  }
+
   // ---- Multi-page navigation (standalone bundle + server mode) ----
   var activePageIdx = ${currentIdx};
   var totalPages = ${pages.length};
 
-  function navigatePage(idx, hash) {
+  function anchorScroll(hash) {
+    if (!hash) return;
+    var target;
+    try { target = document.getElementById(decodeURIComponent(hash.slice(1))); } catch (_) { return; }
+    if (target) target.scrollIntoView();
+  }
+
+  function navigatePage(idx, hash, restoring) {
     if (idx < 0 || idx >= totalPages) return;
     if (window.__MD_PAGES__) {
       var tpl = document.querySelector('template[data-page-tpl="' + idx + '"]');
       var tocTpl = document.querySelector('template[data-toc-tpl="' + idx + '"]');
       var paperEl = document.querySelector(".paper");
       if (!tpl || !paperEl) return;
+      if (!restoring) history.pushState(null, '', '#p=' + idx + (hash || ''));
+      if (idx === activePageIdx) { if (hash) anchorScroll(hash); else window.scrollTo(0, 0); return; }
       activePageIdx = idx;
       paperEl.innerHTML = tpl.innerHTML;
       if (tocNavEl && tocTpl) tocNavEl.innerHTML = tocTpl.innerHTML;
+      docsNav.innerHTML = document.querySelector('template[data-documents-tpl="' + idx + '"]').innerHTML;
+      if (isSmall()) document.body.classList.remove('toc-open-mobile');
       var meta = window.__MD_PAGES__[idx];
       if (meta) {
         document.title = meta.title;
-        var tt = document.getElementById("topbar-title");
-        if (tt) tt.textContent = meta.title;
+        document.getElementById('topbar-title').textContent = meta.title;
+        pickerTrigger.setAttribute('aria-label', '切换文档：' + meta.title);
       }
-      document.querySelectorAll("#page-nav .page-link").forEach(function (a) {
-        a.classList.toggle("active", Number(a.getAttribute("data-page-idx")) === idx);
+      pickerLinks.forEach(function (link) {
+        if (Number(link.dataset.pageIdx) === idx) link.setAttribute('aria-current', 'page');
+        else link.removeAttribute('aria-current');
       });
-      var ind = document.getElementById("page-indicator");
-      if (ind) ind.textContent = (idx + 1) + " / " + totalPages;
-      var prevBtn = document.getElementById("prev-page-btn");
-      var nextBtn = document.getElementById("next-page-btn");
-      if (prevBtn) {
-        prevBtn.setAttribute("aria-disabled", idx <= 0 ? "true" : "false");
-        prevBtn.setAttribute("data-page-idx", String(Math.max(0, idx - 1)));
-      }
-      if (nextBtn) {
-        nextBtn.setAttribute("aria-disabled", idx >= totalPages - 1 ? "true" : "false");
-        nextBtn.setAttribute("data-page-idx", String(Math.min(totalPages - 1, idx + 1)));
-      }
-      history.replaceState(null, "", "#p=" + idx + (hash || ""));
+      document.getElementById('page-indicator').textContent = (idx + 1) + '/' + totalPages;
+      document.querySelectorAll('.page-step').forEach(function (link) {
+        var target = idx + Number(link.dataset.step);
+        if (target >= 0 && target < totalPages) {
+          link.href = '#p=' + target;
+          link.title = window.__MD_PAGES__[target].title;
+          link.removeAttribute('aria-disabled');
+          link.removeAttribute('role');
+        } else {
+          link.removeAttribute('href');
+          link.setAttribute('aria-disabled', 'true');
+          link.setAttribute('role', 'link');
+          link.title = link.getAttribute('aria-label');
+        }
+      });
+      if (!pickerPanel.hidden) showPicker(false);
       bindTocClicks();
       renderVisuals(paperEl);
-      if (hash) {
-        var target = document.getElementById(decodeURIComponent(hash.slice(1)));
-        if (target) target.scrollIntoView();
-      } else {
-        window.scrollTo(0, 0);
-      }
+      if (hash) anchorScroll(hash); else window.scrollTo(0, 0);
       syncScroll();
     } else {
       window.location.href = "/?p=" + idx + (hash || "");
@@ -1098,28 +1046,25 @@ export async function buildHtmlDocument(input, opts = {}) {
   }
 
   if (totalPages > 1) {
-    document.addEventListener("click", function (e) {
-      var a = e.target.closest("a[data-page-idx]");
+    document.addEventListener('click', function (e) {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      var a = e.target.closest('a[href]');
       if (!a) return;
-      if (a.getAttribute("aria-disabled") === "true") { e.preventDefault(); return; }
-      if (window.__MD_PAGES__) {
-        e.preventDefault();
-        var idx = Number(a.getAttribute("data-page-idx"));
-        var href = a.getAttribute("href") || "";
-        var hi = href.indexOf("#");
-        var hash = hi >= 0 && !href.startsWith("#p=") ? href.slice(hi) : "";
-        navigatePage(idx, hash);
-      }
+      if (a.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
+      if (!window.__MD_PAGES__) return;
+      var href = a.getAttribute('href');
+      var match = /^#p=(\\d+)(#.*)?$/.exec(href);
+      if (match) { e.preventDefault(); navigatePage(Number(match[1]), match[2] || ''); }
+      else if (href.startsWith('#') && href.length > 1) { e.preventDefault(); navigatePage(activePageIdx, href); }
     });
-
-    if (window.__MD_PAGES__ && location.hash.startsWith("#p=")) {
-      var m = location.hash.match(/^#p=(\d+)/);
-      if (m) {
-        var initIdx = Number(m[1]);
-        if (initIdx !== activePageIdx && initIdx >= 0 && initIdx < totalPages) {
-          navigatePage(initIdx, "");
-        }
-      }
+    if (window.__MD_PAGES__) {
+      var restorePage = function () {
+        var match = /^#p=(\\d+)(#.*)?$/.exec(location.hash);
+        navigatePage(match ? Number(match[1]) : 0, match ? match[2] || '' : location.hash, true);
+      };
+      window.addEventListener('hashchange', restorePage);
+      window.addEventListener('popstate', restorePage);
+      if (location.hash) restorePage();
     }
   }
 
@@ -1130,13 +1075,13 @@ export async function buildHtmlDocument(input, opts = {}) {
     if (!popover) return;
     var next = typeof force === "boolean" ? force : !popover.classList.contains("open");
     popover.classList.toggle("open", next);
+    helpBtn.setAttribute('aria-expanded', String(next));
+    if (next) printBtn.focus({ preventScroll: true });
   }
-  if (helpBtn) {
-    helpBtn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      toggleHelp();
-    });
-  }
+  helpBtn.addEventListener('click', function () { toggleHelp(); });
+  popover.addEventListener('focusout', function (e) {
+    if (e.relatedTarget && !popover.contains(e.relatedTarget) && e.relatedTarget !== helpBtn) toggleHelp(false);
+  });
   document.addEventListener("click", function (e) {
     if (popover && popover.classList.contains("open") && !popover.contains(e.target) && e.target !== helpBtn) {
       toggleHelp(false);
@@ -1149,7 +1094,10 @@ export async function buildHtmlDocument(input, opts = {}) {
     if (tag === "INPUT" || tag === "TEXTAREA" || (document.activeElement && document.activeElement.isContentEditable)) return;
 
     if (e.key === "Escape") {
-      toggleHelp(false);
+      if (popover.classList.contains('open')) {
+        toggleHelp(false);
+        helpBtn.focus();
+      }
       return;
     }
     if (e.key === "?" || (e.key === "/" && e.shiftKey)) {
@@ -1198,6 +1146,11 @@ export async function buildHtmlDocument(input, opts = {}) {
   }
   var es = new EventSource("/_events");
   es.addEventListener("reload", function () {
+    if (document.body.classList.contains('review-has-draft') || document.body.classList.contains('review-picking')) {
+      var status = document.getElementById('review-status');
+      if (status) status.textContent = '源文已更新。可先保留草稿，刷新后重新选取位置。';
+      return;
+    }
     sessionStorage.setItem(key, String(window.scrollY));
     location.reload();
   });
@@ -1213,22 +1166,24 @@ export async function buildHtmlDocument(input, opts = {}) {
 <title>${escapeHtml(current.title)}</title>
 ${headStyles}<style>
 ${PAGE_CSS}
+${workspace ? await workspaceCss : ''}
 </style>
 </head>
 <body>
-  <header class="topbar">
+  <header class="topbar${workspace ? ' workspace-topbar' : ''}">
     <div class="topbar-left">
-      ${hasSidebar ? `<button class="icon-btn" id="toc-toggle-btn" type="button" title="切换目录 (t)">目录</button>` : ""}
-      <span class="topbar-title" id="topbar-title">${escapeHtml(current.title)}</span>
+      ${hasSidebar ? `<button class="icon-btn" id="toc-toggle-btn" type="button" title="切换导航 (t)">目录</button>` : ""}
+      ${titleHtml}
     </div>
     <div class="topbar-actions">
       ${pagerHtml}
-      <button class="icon-btn" id="help-btn" type="button" title="快捷键 (?)">?</button>
-      <button class="icon-btn" id="print-btn" type="button">打印 / PDF</button>
+      ${railHtml ? `<button type="button" class="icon-btn" id="rail-toggle" aria-controls="workspace-rail">批注</button>` : ''}
+      <button class="icon-btn" id="help-btn" type="button" aria-label="更多操作" title="更多操作" aria-expanded="false" aria-controls="shortcuts-popover">···</button>
     </div>
   </header>
   <div class="shortcuts-popover" id="shortcuts-popover">
-    <div class="shortcuts-title">快捷键 · Shortcuts</div>
+    <button class="icon-btn" id="print-btn" type="button">打印 / PDF</button>
+    <div class="shortcuts-title">快捷键</div>
     <div class="shortcuts-list">
       <kbd>t</kbd><span>展开 / 收起目录</span>
       <kbd>j</kbd> / <kbd>k</kbd><span>向下 / 向上滚动</span>
@@ -1238,14 +1193,15 @@ ${PAGE_CSS}
       <kbd>?</kbd><span>显示 / 关闭此面板</span>
     </div>
   </div>
-  <main class="layout">
+  <main class="layout${workspace ? ' workspace-layout' : ''}${review ? ' workspace-live' : ''}">
     ${sidebarHtml}
     <article class="paper">
       ${current.html}
-      ${footerNavHtml}
     </article>
+    ${railHtml}
   </main>
-${standaloneTemplates}${pagesMetaJson}${bodyScripts}${clientInitScript}${liveReloadScript}
+  ${review ? '<button type="button" id="quote-shortcut" aria-label="批注选区" aria-controls="review-draft" hidden><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.4" aria-hidden="true"><path d="M2.5 2.5h11v8h-6l-3 3v-3h-2z"/></svg>批注</button>' : ''}
+${standaloneTemplates}${pagesMetaJson}${bodyScripts}${clientInitScript}${review ? '<script src="/_preview-assets/review-client.js"></script>' : ''}${liveReloadScript}
 </body>
 </html>
 `;

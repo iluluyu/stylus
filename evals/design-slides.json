@@ -4,7 +4,7 @@
     "version": "v2.12.1",
     "commit": "7db9784ac4f4974d78ab166c7db1c706c0481c3d"
   },
-  "executor_model": "openai-codex/gpt-6.1-sol",
+  "executor_model": "openai-codex/gpt-6.2-sol",
   "evals": [
     {
       "id": 1,

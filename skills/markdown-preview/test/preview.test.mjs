@@ -1,15 +1,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import fs, { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { syncBuiltinESMExports } from "node:module";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { renderMarkdown } from "../scripts/render.mjs";
+import { inlineLocalImages, renderMarkdown } from "../scripts/render.mjs";
 import { exportStandaloneHtml, startPreviewServer } from "../scripts/preview.mjs";
+import { createAnnotationStore, collectAnnotations } from "../scripts/annotation-store.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const exampleMd = resolve(root, "examples/research-report.md");
+const cli = resolve(root, "scripts/preview.mjs");
 
 test("protects math underscores, renders KaTeX, preserves currency and code blocks", () => {
   const md = [
@@ -157,7 +160,13 @@ test("multi-page directory preview and standalone bundle support page switcher a
     const outPath = join(temp, "bundle.html");
     await exportStandaloneHtml(temp, outPath);
     const bundled = await readFile(outPath, "utf8");
-    assert.match(bundled, /页面 · Pages \(3\)/);
+    assert.match(bundled, /class="toc-title">目录</);
+    assert.match(bundled, /id="documents-title">文档</);
+    assert.match(bundled, /id="documents-list"/);
+    assert.match(bundled, /id="doc-picker-trigger"/);
+    assert.doesNotMatch(bundled, /id="workspace-rail"/);
+    assert.match(bundled, /id="page-indicator"[^>]*>1\/3</);
+    assert.match(bundled, /href="#p=2#results"/);
     assert.match(bundled, /window\.__MD_PAGES__=/);
     assert.match(bundled, /data-page-tpl="0"/);
     assert.match(bundled, /data-page-tpl="2"/);
@@ -167,16 +176,186 @@ test("multi-page directory preview and standalone bundle support page switcher a
     try {
       const p0 = await (await fetch(server.url + "/?p=0")).text();
       assert.match(p0, /Overview/);
-      assert.match(p0, /1 \/ 3/);
+      assert.match(p0, /aria-label="切换文档：Overview"/);
       const p2 = await (await fetch(server.url + "/?p=2")).text();
       assert.match(p2, /Details/);
-      assert.match(p2, /3 \/ 3/);
+      assert.match(p2, /aria-label="切换文档：Details"/);
+      assert.match(p2, /id="page-indicator"[^>]*>3\/3</);
     } finally {
       await server.close();
     }
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
+});
+
+test("CLI export uses the explicit root for wiki links and document paths", async (t) => {
+  const temp = await mkdtemp(join(tmpdir(), "md-root-"));
+  t.after(() => rm(temp, { recursive: true, force: true }));
+  const docs = join(temp, "docs");
+  await mkdir(docs);
+  await writeFile(join(docs, "README.md"), "# A\n\n[[docs/target#Results|Root link]]\n");
+  await writeFile(join(docs, "target.md"), "# B\n\n## Results\n");
+  const out = join(temp, "export.html");
+  const result = spawnSync(process.execPath, [cli, docs, "--root", temp, "--out", out], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  const html = await readFile(out, "utf8");
+  assert.match(html, /<a class="wiki-link" href="#p=1#results" data-page-idx="1">Root link<\/a>/);
+  assert.match(html, /<span class="doc-path">docs\/target\.md<\/span>/);
+});
+
+test("inlined images preserve dollar sequences in attributes", async (t) => {
+  const temp = await mkdtemp(join(tmpdir(), "md-inline-"));
+  t.after(() => rm(temp, { recursive: true, force: true }));
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg"/>';
+  await writeFile(join(temp, "figure.svg"), svg);
+  const tag = '<img title="$$ $&" src="figure.svg" alt="$$ $& $\' $`">';
+  const expected = tag.replace("figure.svg", `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`);
+  assert.equal(await inlineLocalImages(`${tag}\n${tag}`, temp), `${expected}\n${expected}`);
+});
+
+test("CLI rejects invalid or missing option values with specific diagnostics", () => {
+  for (const [flags, message] of [
+    [["--annotations", "--since", "nope"], /--since must be a valid date/],
+    [["--annotations", "--since"], /Expected --since/],
+    [["--port", "NaN"], /--port must be an integer/],
+    [["--port", "65536"], /--port must be an integer/],
+    [["--port", "-1"], /--port must be an integer/],
+    [["--port", "1.5"], /--port must be an integer/],
+    [["--port", "--detach"], /Expected --port/],
+    [["--reply", "some-id"], /Expected --reply <annotation-id> <text>/],
+    [["--reply", "some-id", "   "], /Expected --reply <annotation-id> <text>/],
+    [["--root"], /Expected --root/],
+  ]) {
+    const result = spawnSync(process.execPath, [cli, exampleMd, ...flags], { encoding: "utf8", timeout: 2000 });
+    assert.equal(result.status, 1, flags.join(" "));
+    assert.match(result.stderr, message);
+    assert.doesNotMatch(result.stderr, /RangeError|\n\s+at /);
+  }
+});
+
+test("live preview shares a render, invalidates on changes, and checks only the POST target", async (t) => {
+  const temp = await mkdtemp(join(tmpdir(), "md-cache-"));
+  const docs = join(temp, "notes");
+  await mkdir(docs);
+  const a = join(docs, "README.md");
+  const b = join(docs, "other.md");
+  await writeFile(a, "# First\n\nParagraph\n");
+  await writeFile(b, "# Second\n");
+  const reads = [];
+  const original = fs.readFile;
+  fs.readFile = (path, ...args) => {
+    if (path === a || path === b) reads.push(path);
+    return original(path, ...args);
+  };
+  syncBuiltinESMExports();
+  const controller = new AbortController();
+  let server;
+  t.after(async () => {
+    controller.abort();
+    fs.readFile = original;
+    syncBuiltinESMExports();
+    await server?.close();
+    await rm(temp, { recursive: true, force: true });
+  });
+  server = await startPreviewServer(docs, { annotationsDir: join(temp, "review") });
+  assert.deepEqual(reads.splice(0), [a, b]);
+  const get = async (query = "") => {
+    const response = await fetch(server.url + "/" + query);
+    assert.equal(response.status, 200);
+    return response.text();
+  };
+  const [first, second] = await Promise.all([get(), get("?p=1")]);
+  assert.match(first, /<title>First<\/title>/);
+  assert.match(second, /<title>Second<\/title>/);
+  assert.deepEqual(reads, []);
+  const meta = JSON.parse(first.match(/id="review-data">([^<]+)/)[1]);
+  const post = () => fetch(server.url + "/_annotations?doc=README.md", {
+    method: "POST", headers: { "Content-Type": "application/json", Origin: server.url },
+    body: JSON.stringify({ kind: "point", block: meta.blocks[0].id, revision: meta.revision, body: "Note" }),
+  });
+  assert.equal((await post()).status, 201);
+  assert.deepEqual(reads.splice(0), [a]);
+
+  const reader = (await fetch(server.url + "/_events", { signal: controller.signal })).body.getReader();
+  await reader.read();
+  async function waitForReload() {
+    const timeout = setTimeout(() => controller.abort(new Error("Timed out waiting for cache invalidation")), 3000);
+    try {
+      let message = "";
+      while (!message.includes("event: reload")) {
+        const { done, value } = await reader.read();
+        if (done) throw new Error("Unexpected end of event stream");
+        message += Buffer.from(value).toString();
+      }
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  await writeFile(a, "# Edited\n\nParagraph\n");
+  await waitForReload();
+  const rebuilt = await Promise.all([get(), get("?p=1"), get()]);
+  assert.match(rebuilt[0], /<title>Edited<\/title>/);
+  assert.match(rebuilt[2], /<title>Edited<\/title>/);
+  assert.deepEqual(reads.splice(0), [a, b]);
+  assert.equal((await post()).status, 409);
+  assert.deepEqual(reads, []);
+
+  const added = join(docs, "third.md");
+  await writeFile(added, "# Third\n");
+  await waitForReload();
+  assert.match(await get("?p=2"), /<title>Third<\/title>/);
+  await rm(added);
+  await waitForReload();
+  assert.match(await get("?p=2"), /<title>Second<\/title>/);
+});
+
+test("annotation API validates origin and revision; line anchors survive moved blocks and flag edits", async (t) => {
+  const temp = await mkdtemp(join(tmpdir(), "md-review-"));
+  t.after(() => rm(temp, { recursive: true, force: true }));
+  const file = join(temp, "test.md");
+  const source = "---\ntitle: A note\n---\n# Heading\n\nTarget paragraph.\n";
+  await writeFile(file, source);
+  const storeDir = join(temp, "private");
+  const server = await startPreviewServer(file, { annotationsDir: storeDir });
+  t.after(() => server.close());
+  const html = await (await fetch(server.url)).text();
+  const meta = JSON.parse(html.match(/id="review-data">([^<]+)/)[1]);
+  const target = meta.blocks.find((b) => b.start === 6);
+  assert.equal(target.end, 6);
+  const endpoint = server.url + "/_annotations?doc=test.md";
+  const payload = { kind: "point", block: target.id, revision: meta.revision, body: "Add a figure" };
+  const post = (origin, body) => fetch(endpoint, { method: "POST",
+    headers: { "Content-Type": "application/json", Origin: origin }, body: JSON.stringify(body) });
+  assert.equal((await post("https://another-origin.invalid", payload)).status, 403);
+  assert.equal((await post(server.url, { ...payload, revision: "stale" })).status, 409);
+  assert.equal((await post(server.url, { ...payload, block: 9999 })).status, 409);
+  assert.equal((await post(server.url, { ...payload, body: " " })).status, 400);
+  assert.equal((await post(server.url, { ...payload, caret: { offset: -1, before: "", after: "x" } })).status, 400);
+  const response = await post(server.url, payload);
+  assert.equal(response.status, 201);
+  const note = await response.json();
+  const store = createAnnotationStore(storeDir);
+  assert.equal((await store.list(meta.doc)).length, 1);
+  await store.reply(meta.doc, note.id, "Added.");
+  const moved = source.replace("Target", "New paragraph.\n\nTarget");
+  await writeFile(file, moved);
+  assert.equal((await post(server.url, payload)).status, 409);
+  const indexed = async (text) => (await collectAnnotations([{ doc: meta.doc, ...renderMarkdown(text, { annotate: true }) }], store))[0];
+  assert.equal((await indexed(moved)).location.insertAfterLine, 8);
+  const rewritten = await indexed(moved.replace("Target paragraph.", "Rewritten."));
+  assert.equal(rewritten.location, null);
+  assert.equal(rewritten.original.from, 6);
+  assert.equal(rewritten.replies[0].body, "Added.");
+  assert.equal((await indexed(moved + "\nTarget paragraph.\n")).location, null);
+  assert.equal((await indexed(source.replace("Target paragraph.", "Changed.\n\n## Another section\n\nTarget paragraph."))).location, null);
+
+  const repeated = source + "\nTarget paragraph.\n";
+  const page = { doc: "repeated.md", ...renderMarkdown(repeated, { annotate: true }) };
+  const repeatedNote = await store.add(page, { ...payload, revision: page.revision });
+  assert.equal(repeatedNote.anchor.ambiguous, true);
+  const [remaining] = await collectAnnotations([{ doc: page.doc, ...renderMarkdown(source, { annotate: true }) }], store);
+  assert.equal(remaining.location, null);
 });
 
 test("supports image directory preview and triggers SSE reload when referenced image updates", async () => {

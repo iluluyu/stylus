@@ -1,10 +1,15 @@
 import http from "node:http";
 import { watch } from "node:fs";
-import { readFile, writeFile, mkdir, stat, readdir } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { readFile, writeFile, mkdir, stat, readdir, realpath } from "node:fs/promises";
 import { resolve, dirname, extname, basename, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderMarkdown, inlineLocalImages, rewritePageLinks, collectLocalImagePaths } from "./render.mjs";
 import { buildHtmlDocument, ASSET_PATHS } from "./template.mjs";
+import { reviewClient } from "./workspace.mjs";
+import { annotationDirectory, createAnnotationStore, collectAnnotations } from "./annotation-store.mjs";
+
+const within = (dir, path) => path === dir || path.startsWith(dir.endsWith(sep) ? dir : dir + sep);
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -27,7 +32,8 @@ const MIME = {
 const IGNORED_DIRS = new Set(["node_modules", ".git", "artifacts", "dist", "__pycache__"]);
 const IMAGE_EXT_RE = /\.(png|jpe?g|gif|webp|svg)$/i;
 
-async function collectFiles(dir, extRe, prioritizeReadme, out = []) {
+async function collectFiles(dir, extRe, prioritizeReadme, scannedDirs, out = []) {
+  scannedDirs?.add(dir);
   const entries = await readdir(dir, { withFileTypes: true });
   entries.sort((a, b) => {
     const rank = (e) => {
@@ -44,7 +50,7 @@ async function collectFiles(dir, extRe, prioritizeReadme, out = []) {
     if (entry.name.startsWith(".") || IGNORED_DIRS.has(entry.name)) continue;
     const full = resolve(dir, entry.name);
     if (entry.isDirectory()) {
-      await collectFiles(full, extRe, prioritizeReadme, out);
+      await collectFiles(full, extRe, prioritizeReadme, scannedDirs, out);
     } else if (extRe.test(entry.name)) {
       out.push(full);
     }
@@ -65,7 +71,7 @@ function commonAncestorDir(paths) {
   return first.slice(0, len).join(sep) || sep;
 }
 
-export async function resolveInputPages(inputs) {
+export async function resolveInputPages(inputs, scannedDirs) {
   const list = Array.isArray(inputs) ? inputs : [inputs];
   const entries = [];
   const seenMd = new Set();
@@ -76,7 +82,7 @@ export async function resolveInputPages(inputs) {
     const abs = resolve(item);
     const info = await stat(abs);
     if (info.isDirectory()) {
-      const mdFiles = await collectFiles(abs, /\.md$/i, true);
+      const mdFiles = await collectFiles(abs, /\.md$/i, true, scannedDirs);
       if (mdFiles.length) {
         for (const f of mdFiles) {
           if (!seenMd.has(f)) {
@@ -85,7 +91,7 @@ export async function resolveInputPages(inputs) {
           }
         }
       } else {
-        const imgFiles = await collectFiles(abs, IMAGE_EXT_RE, false);
+        const imgFiles = await collectFiles(abs, IMAGE_EXT_RE, false, scannedDirs);
         if (imgFiles.length) {
           entries.push({
             type: "gallery",
@@ -152,15 +158,17 @@ function rewriteServerImages(html, pageDir, serveRoot) {
   return html.replace(/(<img\b[^>]*?\bsrc=["'])([^"']+)(["'][^>]*>)/gi, (full, prefix, src, suffix) => {
     if (/^(?:https?:|data:|blob:|\/)/i.test(src)) return full;
     const [rawPath, rest = ""] = src.split(/([?#].*)/);
-    const absTarget = resolve(pageDir, decodeURIComponent(rawPath));
-    if (absTarget !== serveRoot && !absTarget.startsWith(serveRoot + sep)) return full;
+    let absTarget;
+    try { absTarget = resolve(pageDir, decodeURIComponent(rawPath)); } catch { return full; }
+    if (!within(serveRoot, absTarget)) return full;
     const relFromRoot = relative(serveRoot, absTarget).split(sep).map(encodeURIComponent).join("/");
     return `${prefix}/_file/${relFromRoot}${rest}${suffix}`;
   });
 }
 
 async function renderPages(inputs, opts = {}) {
-  const entries = await resolveInputPages(inputs);
+  const scannedDirs = new Set();
+  const entries = await resolveInputPages(inputs, scannedDirs);
   const standalone = Boolean(opts.standalone);
 
   const allDirs = entries.map((e) => (e.type === "markdown" ? dirname(e.absPath) : e.baseDir));
@@ -173,15 +181,8 @@ async function renderPages(inputs, opts = {}) {
   });
   const serveRoot = resolve(opts.root || rootCandidate);
 
-  const pathToPageUrl = new Map();
-  entries.forEach((entry, index) => {
-    if (entry.type === "markdown") {
-      pathToPageUrl.set(entry.absPath, {
-        index,
-        href: standalone ? `#p=${index}` : `/?p=${index}`,
-      });
-    }
-  });
+  const hrefFor = (index) => standalone ? `#p=${index}` : `/?p=${index}`;
+  const pagesByPath = new Map();
 
   const watchedFiles = new Set();
   const pages = [];
@@ -199,12 +200,17 @@ async function renderPages(inputs, opts = {}) {
       ? basename(entry.absPath, extname(entry.absPath))
       : entry.title;
 
-    const rendered = renderMarkdown(source, { fallbackTitle });
+    const rendered = renderMarkdown(source, { fallbackTitle, annotate: !standalone && entry.type === "markdown" });
+    rendered.path = relative(serveRoot, entry.absPath || entry.baseDir).split(sep).join("/") || entry.title;
+    rendered.links = [];
+    if (entry.type === "markdown") {
+      rendered.doc = rendered.path;
+      pagesByPath.set(entry.absPath, { index: pages.length, page: rendered, file: entry.absPath });
+    }
     for (const imgPath of collectLocalImagePaths(rendered.html, baseDir)) {
       watchedFiles.add(imgPath);
     }
 
-    rendered.html = rewritePageLinks(rendered.html, baseDir, pathToPageUrl);
     if (standalone) {
       rendered.html = await inlineLocalImages(rendered.html, baseDir);
     } else {
@@ -213,7 +219,30 @@ async function renderPages(inputs, opts = {}) {
     pages.push(rendered);
   }
 
-  return { entries, pages, serveRoot, watchedFiles };
+  const aliases = new Map();
+  for (const target of pagesByPath.values()) {
+    for (const name of new Set([target.page.title, basename(target.file, extname(target.file))].map((s) => s.toLowerCase()))) {
+      aliases.set(name, aliases.has(name) ? null : target);
+    }
+  }
+  pages.forEach((page, index) => {
+    const file = entries[index].absPath;
+    if (!file) return;
+    const resolveWiki = (name) => {
+      if (!name) return pagesByPath.get(file);
+      const withExt = /\.md$/i.test(name) ? name : `${name}.md`;
+      const relativeTarget = pagesByPath.get(resolve(dirname(file), withExt));
+      if (relativeTarget) return relativeTarget;
+      const rootTarget = pagesByPath.get(resolve(serveRoot, withExt));
+      if (rootTarget) return rootTarget;
+      return aliases.get(name.replace(/\.md$/i, "").toLowerCase());
+    };
+    const links = new Set();
+    page.html = rewritePageLinks(page.html, { file, pagesByPath, resolveWiki, hrefFor,
+      addLink: (target) => { if (target !== index) links.add(target); } });
+    page.links = [...links];
+  });
+  return { entries, pages, serveRoot, watchedFiles, scannedDirs };
 }
 
 export async function renderFileToHtml(inputs, opts = {}) {
@@ -221,24 +250,56 @@ export async function renderFileToHtml(inputs, opts = {}) {
   return buildHtmlDocument({ pages }, opts);
 }
 
-export async function exportStandaloneHtml(inputs, outPath) {
+export async function exportStandaloneHtml(inputs, outPath, opts = {}) {
   const absOut = resolve(outPath);
-  const html = await renderFileToHtml(inputs, { standalone: true, liveReload: false });
+  const html = await renderFileToHtml(inputs, { standalone: true, liveReload: false, root: opts.root });
   await mkdir(dirname(absOut), { recursive: true });
   await writeFile(absOut, html, "utf8");
   return absOut;
 }
 
+function sendJson(res, status, body) {
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+  res.end(JSON.stringify(body));
+}
+
+async function readJson(req) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req.iterator({ destroyOnReturn: false })) {
+    size += chunk.length;
+    if (size > 64 * 1024) {
+      req.resume();
+      throw Object.assign(new Error("批注请求过大。"), { status: 413 });
+    }
+    chunks.push(chunk);
+  }
+  try {
+    const value = JSON.parse(Buffer.concat(chunks));
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error();
+    return value;
+  } catch { throw Object.assign(new Error("无效的批注请求。"), { status: 400 }); }
+}
+
 export async function startPreviewServer(inputs, opts = {}) {
   const initial = await renderPages(inputs, { standalone: false, root: opts.root });
   const serveRoot = initial.serveRoot;
+  const canonicalRoot = await realpath(serveRoot);
+  const annotationsDir = annotationDirectory(canonicalRoot, opts.annotationsDir);
+  const store = createAnnotationStore(annotationsDir);
   const port = opts.port ?? 0;
   const clients = new Set();
-  const watchedFiles = new Set(initial.watchedFiles);
   const dirWatchers = new Map();
+  let watchedFiles, scannedDirs;
+  let generation = 0;
+  let cached, pending;
+  let closing = false;
 
   let debounceTimer = null;
-  const scheduleReload = () => {
+  const invalidate = () => {
+    if (closing) return;
+    generation++;
+    cached = null;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       for (const res of clients) {
@@ -247,30 +308,57 @@ export async function startPreviewServer(inputs, opts = {}) {
     }, 80);
   };
 
-  const syncWatchers = (paths) => {
-    for (const p of paths) watchedFiles.add(p);
-    const dirs = new Set([...watchedFiles].map((p) => dirname(p)));
+  function publish(result) {
+    ({ watchedFiles, scannedDirs } = result);
+    const dirs = new Set([...scannedDirs, ...[...watchedFiles].map((p) => dirname(p))]);
+    for (const [dir, watcher] of dirWatchers) {
+      if (dirs.has(dir)) continue;
+      watcher.close();
+      dirWatchers.delete(dir);
+    }
     for (const dir of dirs) {
-      if (dirWatchers.has(dir)) continue;
+      if (closing || dirWatchers.has(dir)) continue;
       try {
-        const w = watch(dir, (_eventType, filename) => {
-          if (!filename) {
-            scheduleReload();
-            return;
-          }
-          const changed = resolve(dir, filename.toString());
-          if (watchedFiles.has(changed)) {
-            scheduleReload();
-          }
+        const watcher = watch(dir, (event, filename) => {
+          const name = filename?.toString();
+          // Directory inputs can gain or lose Markdown, figures, or entire subdirectories.
+          const membershipChange = event === "rename" && scannedDirs.has(dir) &&
+            name && !name.startsWith(".") && !IGNORED_DIRS.has(name);
+          if (!name || membershipChange || watchedFiles.has(resolve(dir, name))) invalidate();
         });
-        dirWatchers.set(dir, w);
+        watcher.on("error", () => {
+          watcher.close();
+          dirWatchers.delete(dir);
+          invalidate();
+        });
+        dirWatchers.set(dir, watcher);
       } catch {
-        // Best-effort watch
+        // Best-effort watch (e.g. a referenced image directory does not exist yet).
       }
     }
-  };
+    const documents = new Map();
+    result.pages.forEach((page, i) => {
+      if (page.doc) documents.set(page.doc, { page, file: result.entries[i].absPath });
+    });
+    cached = { pages: result.pages, documents };
+    return cached;
+  }
 
-  syncWatchers(initial.watchedFiles);
+  function snapshot() {
+    if (cached) return cached;
+    // Share a rebuild among concurrent requests and don't publish a render
+    // superseded by a watch event while its files were being read.
+    pending ??= (async () => {
+      while (true) {
+        const before = generation;
+        const result = await renderPages(inputs, { root: serveRoot });
+        if (before === generation) return publish(result);
+      }
+    })().finally(() => { pending = null; });
+    return pending;
+  }
+
+  publish(initial);
 
   const server = http.createServer(async (req, res) => {
     try {
@@ -285,11 +373,7 @@ export async function startPreviewServer(inputs, opts = {}) {
       if (pathname === "/" || pathname === "/index.html") {
         const pageParam = Number(url.searchParams.get("p") || 0);
         const activeIndex = Number.isFinite(pageParam) ? Math.max(0, Math.floor(pageParam)) : 0;
-        const { pages, watchedFiles: latestWatched } = await renderPages(inputs, {
-          standalone: false,
-          root: serveRoot,
-        });
-        syncWatchers(latestWatched);
+        const { pages } = await snapshot();
         const html = await buildHtmlDocument({ pages }, {
           standalone: false,
           liveReload: true,
@@ -298,6 +382,43 @@ export async function startPreviewServer(inputs, opts = {}) {
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
         res.end(html);
         return;
+      }
+
+      if (pathname === "/_annotations") {
+        const host = `127.0.0.1:${server.address().port}`;
+        if (req.headers.host !== host && req.headers.host !== `localhost:${server.address().port}`) {
+          return sendJson(res, 403, { error: "请使用本地预览地址。" });
+        }
+        const doc = url.searchParams.get("doc");
+        try {
+          if (req.method === "GET") {
+            if (!(await snapshot()).documents.has(doc)) return sendJson(res, 404, { error: "文档不在预览范围内。" });
+            return sendJson(res, 200, await store.list(doc));
+          }
+          if (req.method !== "POST") return sendJson(res, 405, { error: "不支持此方法。" });
+          if (req.headers.origin !== `http://${req.headers.host}` || !/^application\/json(?:\s*;|$)/i.test(req.headers["content-type"] || "")) {
+            return sendJson(res, 403, { error: "只允许预览页面提交批注。" });
+          }
+          const input = await readJson(req);
+          const target = (await snapshot()).documents.get(doc);
+          if (!target) return sendJson(res, 404, { error: "文档不在预览范围内。" });
+          if (target.page.revision === input.revision) {
+            // fs.watch can deliver its event after the POST. Verify only the
+            // target source, without rendering or reading any other document.
+            const source = await readFile(target.file, "utf8").catch((err) => {
+              if (err.code === "ENOENT") return null;
+              throw err;
+            });
+            if (source === null || createHash("sha256").update(source).digest("hex") !== input.revision) {
+              invalidate();
+              return sendJson(res, 409, { error: "源文件已改变，请刷新后重新选取位置；草稿仍会保留。" });
+            }
+          }
+          const saved = await store.add(target.page, input);
+          return sendJson(res, 201, saved);
+        } catch (err) {
+          return sendJson(res, err.status || 500, { error: err.status ? err.message : "无法读写本地批注，请检查存储路径和权限。" });
+        }
       }
 
       if (pathname === "/_events") {
@@ -312,6 +433,11 @@ export async function startPreviewServer(inputs, opts = {}) {
         return;
       }
 
+      if (pathname === "/_preview-assets/review-client.js") {
+        const script = await readFile(reviewClient);
+        res.writeHead(200, { "Content-Type": MIME[".js"], "Cache-Control": "no-store" });
+        return res.end(script);
+      }
       if (pathname === "/_preview-assets/katex/katex.min.css") {
         res.writeHead(200, { "Content-Type": "text/css; charset=utf-8" });
         res.end(await readFile(ASSET_PATHS.katexCss));
@@ -346,11 +472,17 @@ export async function startPreviewServer(inputs, opts = {}) {
 
       const rel = pathname.startsWith("/_file/") ? pathname.slice("/_file/".length) : pathname.replace(/^\/+/, "");
       const candidate = resolve(serveRoot, rel);
-      if (candidate !== serveRoot && !candidate.startsWith(serveRoot + sep)) {
+      if (!within(serveRoot, candidate)) {
         res.writeHead(403).end("Forbidden");
         return;
       }
-      const info = await stat(candidate);
+      const realCandidate = await realpath(candidate);
+      const realStore = await realpath(annotationsDir).catch(() => annotationsDir);
+      if (!within(canonicalRoot, realCandidate) || within(annotationsDir, candidate) || within(realStore, realCandidate)) {
+        res.writeHead(403).end("Forbidden");
+        return;
+      }
+      const info = await stat(realCandidate);
       if (!info.isFile()) {
         res.writeHead(404).end("Not found");
         return;
@@ -359,7 +491,7 @@ export async function startPreviewServer(inputs, opts = {}) {
         "Content-Type": MIME[extname(candidate).toLowerCase()] || "application/octet-stream",
         "Cache-Control": "no-store",
       });
-      res.end(await readFile(candidate));
+      res.end(await readFile(realCandidate));
     } catch {
       res.writeHead(404).end("Not found");
     }
@@ -385,7 +517,10 @@ export async function startPreviewServer(inputs, opts = {}) {
   return {
     url,
     files: [...watchedFiles],
+    root: serveRoot,
+    annotationsDir,
     close: async () => {
+      closing = true;
       clearTimeout(debounceTimer);
       for (const w of dirWatchers.values()) w.close();
       dirWatchers.clear();
@@ -398,15 +533,43 @@ export async function startPreviewServer(inputs, opts = {}) {
 
 function parseArgs(argv) {
   const args = { files: [], out: null, port: 4321, root: null, serve: false, detach: false, help: false };
-  for (let i = 0; i < argv.length; i++) {
+  let i = 0;
+  const take = (usage) => {
+    const value = argv[++i];
+    if (!value?.trim() || value.startsWith("--") || /^-[hdop]$/.test(value)) {
+      throw new Error(`Expected ${usage}.`);
+    }
+    return value;
+  };
+  for (; i < argv.length; i++) {
     const a = argv[i];
+    if (a === "--") {
+      args.files.push(...argv.slice(i + 1));
+      break;
+    }
     if (a === "-h" || a === "--help") args.help = true;
-    else if (a === "-o" || a === "--out") args.out = argv[++i];
-    else if (a === "-p" || a === "--port") args.port = Number(argv[++i]);
-    else if (a === "--root") args.root = argv[++i];
-    else if (a === "--serve") args.serve = true;
+    else if (a === "-o" || a === "--out") args.out = take(`${a} <output.html>`);
+    else if (a === "-p" || a === "--port") {
+      const value = take(`${a} <port>`);
+      if (!/^\d+$/.test(value) || Number(value) > 65535) throw new Error(`${a} must be an integer from 0 to 65535.`);
+      args.port = Number(value);
+    } else if (a === "--root") args.root = take("--root <dir>");
+    else if (a === "--annotations-dir") args.annotationsDir = take("--annotations-dir <dir>");
+    else if (a === "--annotations") args.annotations = true;
+    else if (a === "--since") {
+      const date = new Date(take("--since <ISO date>"));
+      if (!Number.isFinite(date.getTime())) throw new Error("--since must be a valid date (e.g. 2026-01-01T00:00:00Z).");
+      args.since = date.toISOString();
+    } else if (a === "--reply") {
+      const usage = "--reply <annotation-id> <text>";
+      const id = take(usage);
+      const message = take(usage);
+      if (message.length > 4000) throw new Error("--reply text must be at most 4000 characters.");
+      args.reply = [id, message];
+    } else if (a === "--serve") args.serve = true;
     else if (a === "--detach" || a === "-d") args.detach = true;
-    else if (!a.startsWith("-")) args.files.push(a);
+    else if (a.startsWith("-")) throw new Error(`Unknown option: ${a}.`);
+    else args.files.push(a);
   }
   return args;
 }
@@ -415,6 +578,7 @@ async function spawnDetached(args) {
   const { spawn } = await import("node:child_process");
   const childArgs = [fileURLToPath(import.meta.url), ...args.files.map((f) => resolve(f)), "--port", String(args.port)];
   if (args.root) childArgs.push("--root", resolve(args.root));
+  if (args.annotationsDir) childArgs.push("--annotations-dir", resolve(args.annotationsDir));
   if (args.out) childArgs.push("--out", resolve(args.out), "--serve");
 
   const child = spawn(process.execPath, childArgs, {
@@ -448,12 +612,36 @@ async function spawnDetached(args) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const args = parseArgs(process.argv.slice(2));
+  let args;
+  try {
+    args = parseArgs(process.argv.slice(2));
+  } catch (err) {
+    console.error(`markdown-preview: ${err.message} See --help.`);
+    process.exit(1);
+  }
   if (args.help || !args.files.length) {
     console.log(
-      "Usage: node scripts/preview.mjs <file.md | image | dir>... [--out <output.html>] [--serve] [--detach] [--port 4321] [--root <dir>]"
+      "Usage: node scripts/preview.mjs <file.md | image | dir>... [--out <output.html>] [--serve] [--detach] [--port 4321] [--root <dir>] [--annotations-dir <dir>]\n" +
+      "Read annotations: same inputs and root/store flags plus --annotations [--since <ISO date>]\n" +
+      "Reply: same inputs and root/store flags plus --reply <annotation-id> <text>"
     );
     process.exit(args.help ? 0 : 1);
+  }
+
+  if (args.annotations || args.reply) {
+    const { pages, serveRoot } = await renderPages(args.files, { root: args.root });
+    const dir = annotationDirectory(await realpath(serveRoot), args.annotationsDir);
+    const store = createAnnotationStore(dir);
+    const annotations = await collectAnnotations(pages, store, args.reply ? undefined : args.since);
+    if (args.reply) {
+      const [id, message] = args.reply;
+      const note = annotations.find((item) => item.id === id);
+      if (!note) throw new Error(`Annotation not found in supplied documents: ${id}`);
+      console.log(JSON.stringify(await store.reply(note.file, id, message)));
+    } else {
+      console.log(JSON.stringify({ root: serveRoot, annotationsDir: dir, annotations }, null, 2));
+    }
+    process.exit(0);
   }
 
   if (args.detach) {
@@ -463,14 +651,14 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   }
 
   if (args.out) {
-    const out = await exportStandaloneHtml(args.files, args.out);
+    const out = await exportStandaloneHtml(args.files, args.out, { root: args.root });
     if (!args.serve) {
       console.log(JSON.stringify({ out }));
     }
   }
 
   if (!args.out || args.serve) {
-    const server = await startPreviewServer(args.files, { port: args.port, root: args.root });
-    console.log(JSON.stringify({ url: server.url, pid: process.pid, files: server.files }));
+    const server = await startPreviewServer(args.files, { port: args.port, root: args.root, annotationsDir: args.annotationsDir });
+    console.log(JSON.stringify({ url: server.url, pid: process.pid, files: server.files, root: server.root, annotationsDir: server.annotationsDir }));
   }
 }

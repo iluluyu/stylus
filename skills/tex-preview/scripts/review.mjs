@@ -1,8 +1,7 @@
-import { randomUUID } from 'node:crypto';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { diffLines } from 'diff';
-import { forward, inverse, isId, readJson, writeJson } from './project.mjs';
+import { ensureGitignore, forward, inverse, isId, newId, readJson, writeJson } from './project.mjs';
 
 const numberedEnvironment = /\\(begin|end)\{(equation|align|alignat|gather|multline|flalign|displaymath|figure|table)\*?\}/g;
 const uncomment = (line) => line.replace(/(?<!\\)(?:\\\\)*%.*$/, '');
@@ -237,7 +236,7 @@ function pdfSelection(input) {
 }
 
 export function createReview(project) {
-  const notes = join(project.dir, 'annotations');
+  const notes = join(project.dir, 'notes');
   const folder = (id) => join(notes, id);
   async function get(id) {
     return isId(id) ? readJson(join(folder(id), 'note.json'), null) : null;
@@ -271,7 +270,7 @@ export function createReview(project) {
     async add(build, input) {
       const body = readBody(input.body);
       if (!build || build.id !== input.build) throw annotateError('找不到选区对应的编译版本。', 409);
-      const id = input.submissionId ?? randomUUID();
+      const id = input.submissionId ?? newId();
       if (!isId(id)) throw annotateError('批注标识无效。');
       const previous = input.submissionId && await get(id);
       const alreadySaved = (note) => {
@@ -304,6 +303,7 @@ export function createReview(project) {
       if (!source && !pdf) throw annotateError('请选择一段 TeX 源码或一个 PDF 位置。');
       const note = { id, body, build: build.id, created: new Date().toISOString(), source: source || null, pdf };
       try {
+        await ensureGitignore(project.gitignoreRoot);
         await writeJson(join(folder(id), 'note.json'), note, { exclusive: true });
       } catch (error) {
         if (error.code !== 'EEXIST') throw error;
@@ -329,10 +329,11 @@ export function createReview(project) {
     },
     async event(noteId, input, author) {
       if (!await get(noteId)) throw annotateError('找不到这条批注。', 404);
-      const id = randomUUID();
+      const id = newId();
       const created = new Date().toISOString();
       const event = input.status ? { id, created, status: input.status } : { id, created, body: readBody(input.body), author };
       if (event.status && !['open', 'resolved'].includes(event.status)) throw annotateError('批注状态无效。');
+      await ensureGitignore(project.gitignoreRoot);
       await writeJson(join(folder(noteId), id + '.json'), event);
       return event;
     },

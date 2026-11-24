@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs, { mkdtemp, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import fs, { mkdtemp, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { syncBuiltinESMExports } from "node:module";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -310,28 +310,61 @@ test("live preview shares a render, invalidates on changes, and checks only the 
   assert.match(await get("?p=2"), /<title>Second<\/title>/);
 });
 
-test("project-local review stays with the repository and is private to the review API", async (t) => {
+test("project-local review lives under designs/rev/md, shares notes across roots, and stays private", async (t) => {
   const temp = await mkdtemp(join(tmpdir(), "md-project-review-"));
   t.after(() => rm(temp, { recursive: true, force: true }));
-  const project = join(temp, "project");
+  const repo = join(temp, "repo");
+  const project = join(repo, "subproject");
   const docs = join(project, "docs");
-  const state = join(project, "design", "review-state");
+  const state = join(project, "designs", "rev");
+  await mkdir(join(repo, ".git"), { recursive: true });
   await mkdir(docs, { recursive: true });
-  await mkdir(join(project, ".git"));
+  await mkdir(join(docs, "rev"), { recursive: true });
   await writeFile(join(docs, "review.md"), "# Review\n\nA target.\n");
+  await writeFile(join(docs, "rev", "user.md"), "# User rev doc\n");
   await mkdir(join(state, "tex"), { recursive: true });
   await writeFile(join(state, "tex", "sources.json"), "{}");
+
   const server = await startPreviewServer(docs, { root: project });
   try {
-    assert.ok(server.annotationsDir.startsWith(join(state, "markdown") + "/"));
-    assert.equal((await fetch(server.url + "/_file/design/review-state/tex/sources.json")).status, 403);
+    assert.equal(server.annotationsDir, join(state, "md"));
+    assert.equal((await fetch(server.url + "/_file/designs/rev/tex/sources.json")).status, 403);
     assert.equal((await fetch(server.url + "/_file/docs/review.md")).status, 200);
+    assert.equal((await fetch(server.url + "/_file/docs/rev/user.md")).status, 200);
+
+    const html = await (await fetch(server.url + "/")).text();
+    const meta = JSON.parse(html.match(/id="review-data">([^<]+)/)[1]);
+    const res = await fetch(server.url + "/_annotations?doc=" + encodeURIComponent(meta.doc), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: server.url },
+      body: JSON.stringify({ kind: "point", block: meta.blocks[0].id, revision: meta.revision, body: "Shared note" }),
+    });
+    assert.equal(res.status, 201);
+    const created = await res.json();
+    assert.match(created.id, /^[\da-f]{10}$/);
+    assert.match(await readFile(join(state, ".gitignore"), "utf8"), /^\*$/m);
+    const dirs = await readdir(join(state, "md"));
+    assert.equal(dirs.length, 1);
+    assert.match(dirs[0], /^review-[\da-f]{8}$/);
   } finally {
     await server.close();
   }
+
+  // Opening the single file without --root resolves to the same designs/rev/md note.
+  const single = await startPreviewServer(join(docs, "review.md"));
+  try {
+    assert.equal(single.annotationsDir, join(state, "md"));
+    const notes = await (await fetch(single.url + "/_annotations?doc=review.md")).json();
+    assert.equal(notes.length, 1);
+    assert.equal(notes[0].doc, "review.md");
+    assert.equal(notes[0].body, "Shared note");
+  } finally {
+    await single.close();
+  }
+
   const relocated = join(temp, "relocated");
-  await rename(project, relocated);
-  assert.equal(annotationDirectory(relocated), server.annotationsDir.replace(project, relocated));
+  await rename(repo, relocated);
+  assert.equal(annotationDirectory(join(relocated, "subproject")), server.annotationsDir.replace(repo, relocated));
 });
 
 test("annotation API validates origin and revision; line anchors survive moved blocks and flag edits", async (t) => {

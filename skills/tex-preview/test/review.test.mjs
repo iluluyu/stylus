@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { cp, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { test } from 'node:test';
 import { compile, forward, inverse, latestBuild, openProject } from '../scripts/project.mjs';
 import { anchorFor, createReview, relocate } from '../scripts/review.mjs';
@@ -59,23 +59,35 @@ test('a comment with two possible new source locations needs confirmation', () =
   assert.equal(relocate(build(['First case', paragraph, 'Second case', paragraph]), anchor, false), null);
 });
 
-test('a moved canvas retains the compiled PDF and both directions of SyncTeX', async (t) => {
+test('a moved project retains designs/rev/tex state, SyncTeX, auto-gitignore, and prunes old builds', async (t) => {
   const scratch = await mkdtemp(join(tmpdir(), 'tex-project-review-'));
   t.after(() => rm(scratch, { recursive: true, force: true }));
   const original = join(scratch, 'original');
-  const paper = join(original, 'design', 'tex');
-  await cp(new URL('../examples/paper/', import.meta.url), paper, { recursive: true });
-  const initial = await openProject(join(paper, 'main.tex'), {});
-  assert.ok(initial.dir.startsWith(join(original, 'design', 'review-state', 'tex') + '/'));
-  const build = await compile(initial);
+  await mkdir(join(original, '.git'), { recursive: true });
+  const sub = join(original, 'paper-a');
+  await mkdir(join(sub, 'designs'), { recursive: true });
+  await cp(new URL('../examples/paper/', import.meta.url), sub, { recursive: true });
+  const initial = await openProject(join(sub, 'main.tex'), {});
+  assert.ok(initial.dir.startsWith(join(sub, 'designs', 'rev', 'tex') + '/'));
+  assert.match(basename(initial.dir), /^main-[a-f0-9]{8}$/);
+  const build1 = await compile(initial);
+  assert.match(build1.id, /^[a-f0-9]{10}$/);
+  assert.match(await readFile(join(sub, 'designs', 'rev', '.gitignore'), 'utf8'), /^\*$/m);
+  const build2 = await compile(initial);
+  const build3 = await compile(initial);
+  const kept = new Set(await readdir(join(initial.dir, 'builds')));
+  assert.equal(kept.has(build1.id), false);
+  assert.equal(kept.has(build2.id), true);
+  assert.equal(kept.has(build3.id), true);
+
   const file = 'sections/results.tex';
-  const target = await forward(initial, build, file, 5);
+  const target = await forward(initial, build3, file, 5);
   const relocated = join(scratch, 'relocated');
   await rename(original, relocated);
-  const project = await openProject(join(relocated, 'design', 'tex', 'main.tex'), {});
+  const project = await openProject(join(relocated, 'paper-a', 'main.tex'), {});
   assert.equal(project.dir, initial.dir.replace(original, relocated));
   const archived = await latestBuild(project);
-  assert.equal(archived.id, build.id);
+  assert.equal(archived.id, build3.id);
   assert.deepEqual(await forward(project, archived, file, 5), target);
   assert.equal((await inverse(project, archived, target.page, target.x, target.y)).file, file);
 });

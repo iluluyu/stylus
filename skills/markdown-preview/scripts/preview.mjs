@@ -7,9 +7,13 @@ import { fileURLToPath } from "node:url";
 import { renderMarkdown, inlineLocalImages, rewritePageLinks, collectLocalImagePaths } from "./render.mjs";
 import { buildHtmlDocument, ASSET_PATHS } from "./template.mjs";
 import { reviewClient } from "./workspace.mjs";
-import { annotationDirectory, createAnnotationStore, collectAnnotations } from "./annotation-store.mjs";
+import { annotationConfig, createAnnotationStore, collectAnnotations } from "./annotation-store.mjs";
 
 const within = (dir, path) => path === dir || path.startsWith(dir.endsWith(sep) ? dir : dir + sep);
+const isDesignsRev = (relPath) => {
+  const parts = relPath.split(sep);
+  return parts.some((part, i) => part === "designs" && parts[i + 1] === "rev");
+};
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -29,7 +33,7 @@ const MIME = {
   ".pdf": "application/pdf",
 };
 
-const IGNORED_DIRS = new Set(["node_modules", ".git", "artifacts", "dist", "__pycache__", "review-state"]);
+const IGNORED_DIRS = new Set(["node_modules", ".git", "artifacts", "dist", "__pycache__"]);
 const IMAGE_EXT_RE = /\.(png|jpe?g|gif|webp|svg)$/i;
 
 async function collectFiles(dir, extRe, prioritizeReadme, scannedDirs, out = []) {
@@ -48,6 +52,7 @@ async function collectFiles(dir, extRe, prioritizeReadme, scannedDirs, out = [])
   });
   for (const entry of entries) {
     if (entry.name.startsWith(".") || IGNORED_DIRS.has(entry.name)) continue;
+    if (entry.isDirectory() && entry.name === "rev" && basename(dir) === "designs") continue;
     const full = resolve(dir, entry.name);
     if (entry.isDirectory()) {
       await collectFiles(full, extRe, prioritizeReadme, scannedDirs, out);
@@ -285,8 +290,13 @@ export async function startPreviewServer(inputs, opts = {}) {
   const initial = await renderPages(inputs, { standalone: false, root: opts.root });
   const serveRoot = initial.serveRoot;
   const canonicalRoot = await realpath(serveRoot);
-  const annotationsDir = annotationDirectory(canonicalRoot, opts.annotationsDir);
-  const store = createAnnotationStore(annotationsDir);
+  const storeConfig = annotationConfig(canonicalRoot, opts.annotationsDir);
+  const annotationsDir = storeConfig.dir;
+  const store = createAnnotationStore(annotationsDir, {
+    baseDir: storeConfig.baseDir,
+    serveRoot: canonicalRoot,
+    gitignoreRoot: storeConfig.gitignoreRoot,
+  });
   const port = opts.port ?? 0;
   const clients = new Set();
   const dirWatchers = new Map();
@@ -322,8 +332,9 @@ export async function startPreviewServer(inputs, opts = {}) {
         const watcher = watch(dir, (event, filename) => {
           const name = filename?.toString();
           // Directory inputs can gain or lose Markdown, figures, or entire subdirectories.
+          const isRevDir = name === "rev" && basename(dir) === "designs";
           const membershipChange = event === "rename" && scannedDirs.has(dir) &&
-            name && !name.startsWith(".") && !IGNORED_DIRS.has(name);
+            name && !name.startsWith(".") && !IGNORED_DIRS.has(name) && !isRevDir;
           if (!name || membershipChange || watchedFiles.has(resolve(dir, name))) invalidate();
         });
         watcher.on("error", () => {
@@ -478,9 +489,10 @@ export async function startPreviewServer(inputs, opts = {}) {
       }
       const realCandidate = await realpath(candidate);
       const realStore = await realpath(annotationsDir).catch(() => annotationsDir);
-      const inReviewState = [relative(serveRoot, candidate), relative(canonicalRoot, realCandidate)]
-        .some((file) => file.split(sep).includes("review-state"));
-      if (!within(canonicalRoot, realCandidate) || within(annotationsDir, candidate) || within(realStore, realCandidate) || inReviewState) {
+      const realRev = await realpath(storeConfig.revDir).catch(() => storeConfig.revDir);
+      const inDesignsRev = [relative(serveRoot, candidate), relative(canonicalRoot, realCandidate)].some(isDesignsRev);
+      if (!within(canonicalRoot, realCandidate) || within(annotationsDir, candidate) || within(realStore, realCandidate) ||
+          within(storeConfig.revDir, candidate) || within(realRev, realCandidate) || inDesignsRev) {
         res.writeHead(403).end("Forbidden");
         return;
       }
@@ -632,8 +644,14 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
 
   if (args.annotations || args.reply) {
     const { pages, serveRoot } = await renderPages(args.files, { root: args.root });
-    const dir = annotationDirectory(await realpath(serveRoot), args.annotationsDir);
-    const store = createAnnotationStore(dir);
+    const canonicalRoot = await realpath(serveRoot);
+    const storeConfig = annotationConfig(canonicalRoot, args.annotationsDir);
+    const dir = storeConfig.dir;
+    const store = createAnnotationStore(dir, {
+      baseDir: storeConfig.baseDir,
+      serveRoot: canonicalRoot,
+      gitignoreRoot: storeConfig.gitignoreRoot,
+    });
     const annotations = await collectAnnotations(pages, store, args.reply ? undefined : args.since);
     if (args.reply) {
       const [id, message] = args.reply;

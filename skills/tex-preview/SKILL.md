@@ -18,7 +18,7 @@ node <skill>/scripts/preview.mjs path/to/main.tex --detach [--engine xelatex|lua
 
 - Pass the real main `.tex` file, `--engine` if not `pdflatex`, and `--root <dir>` when sources live above the main file's directory.
 - Poll `<url>/api/state` until `building` is `false` (verify `id` is set and `error` is empty), then give the user the local URL and leave the server running unless asked to stop (`kill <pid>`).
-- **State directory (`stateDir`)**: holds annotations, replies, and compiled build snapshots. Stays with the project—`<dir>/review-state/tex/<manuscript-id>` inside a `design/` folder or Design canvas (`project/canvas.json`), otherwise `<repo>/design/review-state/tex/<manuscript-id>` (or `<root>/design/review-state/tex/<manuscript-id>` outside Git). Pass `--state-dir <dir>` to override the `tex` state root (e.g. `<canvas-root>/review-state/tex`). When cleaning up old builds, keep `latest` and any build referenced by an annotation.
+- **State directory (`stateDir`)**: holds notes, replies, and compiled build snapshots. Stays with the project under `designs/rev/tex/<stem>-<hash>` (reuses the nearest `designs/` folder or Design canvas, otherwise `<repo>/designs/rev/tex/...`, or `<root>/designs/rev/tex/...` outside Git; auto-writes `designs/rev/.gitignore`). Pass `--state-dir <dir>` to override the `tex` state root. Old unreferenced builds are pruned automatically on compile while keeping `latest`, the previous build, and any build referenced by a note.
 - **Browser UI**: TeX line markers open the movable review window; select text → **添加批注** or use PDF **框选**; drafts persist locally and submit on blur/close; **PDF** / **TEX** jump to targets.
 
 ## Process a Review

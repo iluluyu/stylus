@@ -25,7 +25,7 @@ metadata:
    - Accepts single/multiple `.md` or image files (`.svg`/`.png`/`.jpg`/`.webp`/`.gif`) or directories; watches `.md` files and referenced local figures for live reload; auto-picks a free port if `4321` is occupied.
    - Pass `--root <dir>` when relative image or note links point above the input directory (e.g. `../figures/fig1.png`).
    - Prints `{ "url", "pid", "files", "root", "annotationsDir" }` as JSON. Return the clickable `url` (and `.html` path if exported) and leave the server running unless asked to stop (`kill <pid>`).
-   - **State directory (`annotationsDir`)**: stays with the project—`<dir>/review-state/markdown/<scope-id>` inside a `design/` folder or Design canvas (`project/canvas.json`), otherwise `<repo>/design/review-state/markdown/<scope-id>` (or `<root>/design/review-state/markdown/<scope-id>` outside Git). Override with `--annotations-dir <dir>` (e.g. `<canvas-root>/review-state/markdown/<collection>`).
+   - **State directory (`annotationsDir`)**: stays with the project under `designs/rev/md` (per-doc folders `<stem>-<hash>`, reuses the nearest `designs/` folder or Design canvas, otherwise `<repo>/designs/rev/md`, or `<root>/designs/rev/md` outside Git; auto-writes `designs/rev/.gitignore`). Override with `--annotations-dir <dir>`.
 
 ## Authoring & Syntax Notes
 

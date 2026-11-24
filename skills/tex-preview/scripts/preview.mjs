@@ -105,10 +105,14 @@ async function serve(project, port) {
   }
 
   const watcher = watch(project.root, { recursive: true }, (_event, file) => {
-    if (!file || file.split(sep).some((piece) => piece.startsWith('.') && piece !== '.latexmkrc')) return;
+    if (!file) return;
+    const parts = file.split(sep);
+    if (parts.some((piece) => piece.startsWith('.') && piece !== '.latexmkrc')) return;
     const path = resolve(project.root, file);
-    if (file.split(sep).includes('review-state') || pathInside(project.dir, path) ||
-        (pathInside(project.root, project.stateRoot) && pathInside(project.stateRoot, path))) return;
+    const inDesignsRev = parts.some((piece, i) => piece === 'designs' && parts[i + 1] === 'rev');
+    if (inDesignsRev || path === project.revDir || pathInside(project.revDir, path) ||
+        path === project.dir || pathInside(project.dir, path) ||
+        (pathInside(project.root, project.stateRoot) && (path === project.stateRoot || pathInside(project.stateRoot, path)))) return;
     if (watched.test(file) || basename(file) === '.latexmkrc') schedule();
   });
   watcher.on('error', (error) => {

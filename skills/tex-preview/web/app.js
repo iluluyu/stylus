@@ -544,7 +544,8 @@ function beginNote(target, body = '') {
     $('note-body').focus();
     return;
   }
-  draft = { build: shown, submissionId: crypto.randomUUID(), ...target };
+  const submissionId = Array.from(crypto.getRandomValues(new Uint8Array(5)), (b) => b.toString(16).padStart(2, '0')).join('');
+  draft = { build: shown, submissionId, ...target };
   $('target').textContent = target.source ? location(target.source) : '第 ' + target.pdf.page + ' 页' +
     (target.pdf.quote ? '' : ' · 框选区域');
   if (target.source) {

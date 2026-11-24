@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs, { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import fs, { mkdtemp, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { syncBuiltinESMExports } from "node:module";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { inlineLocalImages, renderMarkdown } from "../scripts/render.mjs";
 import { exportStandaloneHtml, startPreviewServer } from "../scripts/preview.mjs";
-import { createAnnotationStore, collectAnnotations } from "../scripts/annotation-store.mjs";
+import { annotationDirectory, createAnnotationStore, collectAnnotations } from "../scripts/annotation-store.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const exampleMd = resolve(root, "examples/research-report.md");
@@ -308,6 +308,30 @@ test("live preview shares a render, invalidates on changes, and checks only the 
   await rm(added);
   await waitForReload();
   assert.match(await get("?p=2"), /<title>Second<\/title>/);
+});
+
+test("project-local review stays with the repository and is private to the review API", async (t) => {
+  const temp = await mkdtemp(join(tmpdir(), "md-project-review-"));
+  t.after(() => rm(temp, { recursive: true, force: true }));
+  const project = join(temp, "project");
+  const docs = join(project, "docs");
+  const state = join(project, "design", "review-state");
+  await mkdir(docs, { recursive: true });
+  await mkdir(join(project, ".git"));
+  await writeFile(join(docs, "review.md"), "# Review\n\nA target.\n");
+  await mkdir(join(state, "tex"), { recursive: true });
+  await writeFile(join(state, "tex", "sources.json"), "{}");
+  const server = await startPreviewServer(docs, { root: project });
+  try {
+    assert.ok(server.annotationsDir.startsWith(join(state, "markdown") + "/"));
+    assert.equal((await fetch(server.url + "/_file/design/review-state/tex/sources.json")).status, 403);
+    assert.equal((await fetch(server.url + "/_file/docs/review.md")).status, 200);
+  } finally {
+    await server.close();
+  }
+  const relocated = join(temp, "relocated");
+  await rename(project, relocated);
+  assert.equal(annotationDirectory(relocated), server.annotationsDir.replace(project, relocated));
 });
 
 test("annotation API validates origin and revision; line anchors survive moved blocks and flag edits", async (t) => {

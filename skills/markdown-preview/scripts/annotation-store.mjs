@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const idPattern = /^[\da-f-]{36}$/;
@@ -15,8 +15,18 @@ const jsonFiles = async (dir, pattern) => {
 };
 
 export function annotationDirectory(root, override) {
-  return resolve(override || join(process.env.XDG_STATE_HOME || join(homedir(), ".local/state"),
-    "markdown-preview", hash(root).slice(0, 24)));
+  if (override) return resolve(override);
+  root = resolve(root);
+  const state = reviewStateDirectory(root);
+  return join(state, "markdown", hash(relative(state, root)).slice(0, 24));
+}
+
+function reviewStateDirectory(root) {
+  for (let dir = root; ; dir = dirname(dir)) {
+    if (basename(dir) === "design" || existsSync(join(dir, "project", "canvas.json"))) return join(dir, "review-state");
+    if (existsSync(join(dir, ".git"))) return join(dir, "design", "review-state");
+    if (dirname(dir) === dir) return join(root, "design", "review-state");
+  }
 }
 
 // Never guess when an edited file has several identical candidate blocks.

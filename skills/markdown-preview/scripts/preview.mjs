@@ -29,7 +29,7 @@ const MIME = {
   ".pdf": "application/pdf",
 };
 
-const IGNORED_DIRS = new Set(["node_modules", ".git", "artifacts", "dist", "__pycache__"]);
+const IGNORED_DIRS = new Set(["node_modules", ".git", "artifacts", "dist", "__pycache__", "review-state"]);
 const IMAGE_EXT_RE = /\.(png|jpe?g|gif|webp|svg)$/i;
 
 async function collectFiles(dir, extRe, prioritizeReadme, scannedDirs, out = []) {
@@ -478,7 +478,9 @@ export async function startPreviewServer(inputs, opts = {}) {
       }
       const realCandidate = await realpath(candidate);
       const realStore = await realpath(annotationsDir).catch(() => annotationsDir);
-      if (!within(canonicalRoot, realCandidate) || within(annotationsDir, candidate) || within(realStore, realCandidate)) {
+      const inReviewState = [relative(serveRoot, candidate), relative(canonicalRoot, realCandidate)]
+        .some((file) => file.split(sep).includes("review-state"));
+      if (!within(canonicalRoot, realCandidate) || within(annotationsDir, candidate) || within(realStore, realCandidate) || inReviewState) {
         res.writeHead(403).end("Forbidden");
         return;
       }

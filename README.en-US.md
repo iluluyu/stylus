@@ -19,7 +19,8 @@ stylus helps researchers **write clearly, draw clearly, and present clearly**. E
 | [scifig](skills/scifig/) | Publication-grade vector figures: Python (matplotlib) for data plots, Typst for schematics and multi-panel layouts, with automated linting to SVG/PDF/PNG. | Preparing journal-spec results plots, algorithm flowcharts, method overviews, and composite figures. |
 | [design](skills/design/) | Native scientific canvas: based on claude-design (v2.12.1/7db9784), creating method overviews and mechanisms via `canvas.json` and `.dc.html` with a prebuilt local editor. | Collaboratively drafting paper Figure 1, architecture diagrams, mechanisms, and flowcharts. |
 | [slides](skills/slides/) | Research presentations: narrative-driven 16:9 slide decks using HTML `deck-stage`, with local browser preview and export to PDF or editable PPTX. | Building lab meeting updates, conference talks, defense presentations, and lecture decks. |
-| [markdown-preview](skills/markdown-preview/) | Offline academic Markdown & figure preview: light paper layout, booktabs three-line tables, build-time KaTeX math, fixed auto TOC, Mermaid diagrams, lightweight JSON charts, and live reload. | Previewing research notes, reports, and figure galleries locally or exporting single-file offline HTML. |
+| [markdown-preview](skills/markdown-preview/) | Offline academic Markdown & figure preview: light paper layout, booktabs three-line tables, build-time KaTeX math, multi-page outlines & backlinks, Mermaid/charts, live reload, and local review annotations. | Previewing research notes, reports, and figure galleries, annotating in-browser, or exporting single-file offline HTML. |
+| [tex-preview](skills/tex-preview/) | Local LaTeX manuscript review: PDF ↔ TeX two-way navigation, word/range/region annotations, focused source context, and Agent replies. | Reviewing and revising multi-file LaTeX manuscripts in a browser. |
 
 ## Installation
 
@@ -42,6 +43,7 @@ ln -s "$(pwd)/skills/scifig"                   ~/.agents/skills/
 ln -s "$(pwd)/skills/design"                   ~/.agents/skills/
 ln -s "$(pwd)/skills/slides"                   ~/.agents/skills/
 ln -s "$(pwd)/skills/markdown-preview"         ~/.agents/skills/
+ln -s "$(pwd)/skills/tex-preview"              ~/.agents/skills/
 ```
 
 ### 2. Individual Skill Installation
@@ -98,6 +100,12 @@ Each skill declares its own runtime requirements:
   npm ci --prefix skills/markdown-preview
   node skills/markdown-preview/scripts/preview.mjs skills/markdown-preview/examples/research-report.md --detach
   ```
+- **tex-preview**: Requires Node.js 22.18+, `latexmk`, `synctex`, and the project's TeX engine. Install dependencies and launch a local PDF/TeX review:
+  ```bash
+  npm ci --prefix skills/tex-preview
+  node skills/tex-preview/scripts/preview.mjs skills/tex-preview/examples/paper/main.tex --detach
+  ```
+  See [tex-preview SKILL.md](skills/tex-preview/SKILL.md) for all flags and review commands.
 
 ## Sources & Credits
 

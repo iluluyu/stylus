@@ -19,7 +19,8 @@ stylus 帮助科研人员**写清论文、画清方法、讲清研究**。各个
 | [scifig](skills/scifig/) | 出版级矢量科研绘图：Python (matplotlib) 绘制数据图，Typst 绘制方法图与排版拼版，内置自动检查并导出 SVG/PDF/PNG。 | 绘制期刊规格的数据图、算法流程图、方法总览图及多子图拼版。 |
 | [design](skills/design/) | 原生科研构图画布：基于 claude-design (v2.12.1/7db9784)，用 `canvas.json` 与 `.dc.html` 构思方法示意与机理图，通过预编译本地编辑器预览与导出。 | 人机协同绘制论文 Figure 1、系统架构图、机理示意图与流程图。 |
 | [slides](skills/slides/) | 科研演说幻灯片：基于 HTML `deck-stage` 构建清晰叙事的 16:9 演示文稿，支持本地预览与导出为 PDF 或可编辑 PPTX。 | 制作组会报告、学术会议演讲、学位答辩幻灯片及课件。 |
-| [markdown-preview](skills/markdown-preview/) | 离线科研 Markdown 与图集预览：浅色学术排版、三线表、构建期 KaTeX 公式、固定自动目录、Mermaid 流程图、轻量数据图表与图片热刷新。 | 本地网页预览实验报告、论文笔记、科研图片集及导出单文件离线 HTML。 |
+| [markdown-preview](skills/markdown-preview/) | 离线科研 Markdown 与图集预览：浅色学术排版、三线表、构建期 KaTeX 公式、多页目录与反向链接、Mermaid/图表、图片热刷新及本地批注回复。 | 本地网页预览实验报告、论文笔记、科研图片集、批注审阅及导出单文件离线 HTML。 |
+| [tex-preview](skills/tex-preview/) | 本地 LaTeX 论文审阅预览：PDF 与 TeX 双向跳转、选词/选段/框选批注、聚焦源码上下文与 Agent 回复。 | 在浏览器中对多文件 LaTeX 论文进行多轮审阅与修改。 |
 
 ## 安装指南
 
@@ -42,6 +43,7 @@ ln -s "$(pwd)/skills/scifig"                   ~/.agents/skills/
 ln -s "$(pwd)/skills/design"                   ~/.agents/skills/
 ln -s "$(pwd)/skills/slides"                   ~/.agents/skills/
 ln -s "$(pwd)/skills/markdown-preview"         ~/.agents/skills/
+ln -s "$(pwd)/skills/tex-preview"              ~/.agents/skills/
 ```
 
 ### 2. 单技能独立获取
@@ -98,6 +100,12 @@ npx degit iluluyu/stylus/skills/math-writing ~/.agents/skills/math-writing
   npm ci --prefix skills/markdown-preview
   node skills/markdown-preview/scripts/preview.mjs skills/markdown-preview/examples/research-report.md --detach
   ```
+- **tex-preview**：需要 Node.js 22.18+、`latexmk`、`synctex` 及项目所需的 TeX 引擎。安装依赖后可启动本地 PDF/TeX 审阅：
+  ```bash
+  npm ci --prefix skills/tex-preview
+  node skills/tex-preview/scripts/preview.mjs skills/tex-preview/examples/paper/main.tex --detach
+  ```
+  完整参数与批注处理命令见 [tex-preview SKILL.md](skills/tex-preview/SKILL.md)。
 
 ## 内容来源
 

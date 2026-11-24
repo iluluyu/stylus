@@ -1,0 +1,1335 @@
+:root {
+  color-scheme: light;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", ui-monospace, Consolas, Menlo, monospace;
+
+  /* Calm Canvas System (inspired by skills/design) */
+  --bg-canvas: #efefed;
+  --bg-surface: #ffffff;
+  --bg-well: #f5f5f3;
+  --bg-hover: rgba(20, 20, 19, 0.055);
+  --bg-subtle: #f4f4f1;
+
+  /* Warm Neutral Ink */
+  --ink: #1a1a18;
+  --ink-secondary: #4c4c47;
+  --muted: #84847e;
+  --faint: #a8a8a1;
+
+  /* Hairlines */
+  --hairline: rgba(20, 20, 19, 0.085);
+  --hairline-strong: rgba(20, 20, 19, 0.14);
+
+  /* Single Accent + Minimal Semantics */
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: #e8f1ff;
+  --accent-surface: #f2f7ff;
+
+  --ok: #22c55e;
+  --warn: #d97706;
+  --warn-soft: #fef5e7;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+
+  /* Elevations */
+  --shadow-sm: 0 1px 2px rgba(20, 20, 19, 0.04);
+  --shadow-island: 0 1px 2px rgba(20, 20, 19, 0.05), 0 4px 12px rgba(20, 20, 19, 0.055);
+  --shadow-page: 0 1px 3px rgba(20, 20, 19, 0.06), 0 10px 30px rgba(20, 20, 19, 0.06);
+  --shadow-window: 0 4px 12px rgba(20, 20, 19, 0.06), 0 16px 40px rgba(20, 20, 19, 0.11);
+
+  --scale-factor: 1;
+  font: 13.5px/1.5 var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  height: 100vh;
+  height: 100dvh;
+  background: var(--bg-canvas);
+  color: var(--ink);
+  overflow: hidden;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  border-radius: 7px;
+  color: var(--ink-secondary);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+button:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--ink);
+}
+
+button[aria-pressed="true"],
+button[aria-expanded="true"]:not(.note-count):not(.file-trigger) {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+button.primary {
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 550;
+}
+
+button.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  color: #ffffff;
+}
+
+button.icon {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Full-Bleed Split Canvas Workspace
+   ========================================================================== */
+#workspace {
+  --source-width: 42%;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: var(--source-width) 1px minmax(0, 1fr);
+  overflow: hidden;
+  background: var(--bg-canvas);
+}
+
+#workspace.source-closed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.source-closed #source-pane,
+.source-closed #divider,
+.source-closed .file-sep,
+.source-closed #file-picker-wrap {
+  display: none;
+}
+
+/* ==========================================================================
+   Floating Islands (Top-Left & Top-Right)
+   ========================================================================== */
+.island {
+  position: absolute;
+  top: 12px;
+  z-index: 12;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 38px;
+  padding: 3px 4px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-island);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.island-left {
+  left: 12px;
+  max-width: calc(100% - 24px);
+}
+
+.island-right {
+  right: 12px;
+  max-width: calc(100% - 24px);
+}
+
+.island-group,
+.view-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.island-btn {
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--ink-secondary);
+  font-size: 12.5px;
+}
+
+.island-btn.icon {
+  min-width: 28px;
+  padding: 0;
+}
+
+.island-btn.text-btn {
+  padding: 0 7px;
+  font-size: 12px;
+}
+
+.zoom-preset {
+  min-height: 28px;
+  max-width: 82px;
+  padding: 0 3px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink-secondary);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.zoom-preset:hover { background: var(--bg-hover); }
+
+.island-btn.accent {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 550;
+}
+
+.island-btn.accent:hover {
+  background: #dbeafe;
+  color: var(--accent-hover);
+}
+
+.island-sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 3px;
+  background: var(--hairline);
+  flex: none;
+}
+
+.compact-only { display: none; }
+
+/* Custom TeX File Dropdown Component */
+.file-dropdown {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.file-trigger {
+  gap: 6px;
+  padding: 0 8px;
+  color: var(--ink);
+  max-width: 240px;
+}
+
+.file-trigger[aria-expanded="true"] {
+  background: var(--bg-hover);
+  color: var(--ink);
+}
+
+.file-icon {
+  flex: none;
+  color: var(--muted);
+}
+
+.file-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font: 500 12.5px/1.2 var(--font-mono);
+}
+
+.select-chevron {
+  flex: none;
+  color: var(--muted);
+  transition: transform 0.14s ease;
+}
+
+.file-trigger[aria-expanded="true"] .select-chevron {
+  transform: rotate(180deg);
+}
+
+.file-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: -4px;
+  z-index: 25;
+  min-width: 220px;
+  max-width: min(320px, calc(100vw - 24px));
+  max-height: min(340px, 60dvh);
+  overflow: auto;
+  padding: 4px;
+  border-radius: 11px;
+  background: #ffffff;
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-window);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.file-option {
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  color: var(--ink-secondary);
+}
+
+.file-option:hover,
+.file-option:focus-visible {
+  background: var(--bg-subtle);
+  color: var(--ink);
+  outline: none;
+}
+
+.file-option[aria-selected="true"] {
+  background: var(--accent-surface);
+  color: var(--accent);
+}
+
+.file-option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.file-option-name {
+  font: 500 12.5px/1.3 var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-option-dir {
+  font: 400 11px/1.2 var(--font-mono);
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-option[aria-selected="true"] .file-option-dir {
+  color: rgba(37, 99, 235, 0.72);
+}
+
+.file-option-check {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--accent);
+}
+
+/* Build Button + Quiet Status Dot */
+.build-btn {
+  position: relative;
+  min-width: 30px;
+  padding: 0 7px;
+}
+
+.status-dot-wrap {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: inline-flex;
+  pointer-events: none;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--faint);
+  box-shadow: 0 0 0 1.5px #ffffff;
+}
+
+.status-dot-wrap.ready .status-dot { background: var(--ok); }
+
+.status-dot-wrap.building .status-dot {
+  background: var(--warn);
+  animation: pulse-dot 1.1s ease-in-out infinite;
+}
+
+.status-dot-wrap.failed .status-dot { background: var(--danger); }
+
+.build-btn.is-failed {
+  color: var(--danger);
+  background: var(--danger-soft);
+  padding: 0 9px;
+}
+
+.build-btn.is-failed .status-dot-wrap { position: static; }
+.build-btn.is-failed .status-dot { box-shadow: none; }
+.build-btn.is-building .build-icon { animation: spin 1s linear infinite; }
+
+.build-label {
+  font-size: 12px;
+  font-weight: 550;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Review Count Badge */
+#review-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+#toggle-review[aria-expanded="true"] #review-badge {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+/* Page Counter */
+.page-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+#page {
+  width: 26px;
+  height: 24px;
+  padding: 0 2px;
+  text-align: center;
+  appearance: textfield;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+
+#page:hover,
+#page:focus {
+  background: var(--bg-hover);
+  outline: none;
+}
+
+#page::-webkit-inner-spin-button { appearance: none; }
+
+#pages {
+  min-width: 18px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Floating Build Error Card */
+#build-error {
+  position: absolute;
+  top: 58px;
+  right: 12px;
+  z-index: 15;
+  width: min(460px, calc(100% - 24px));
+  border-radius: 11px;
+  background: var(--bg-surface);
+  border: 1px solid rgba(220, 38, 38, 0.22);
+  box-shadow: var(--shadow-window);
+  color: var(--danger);
+  font-size: 12.5px;
+  overflow: hidden;
+}
+
+#build-error summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  background: var(--danger-soft);
+  cursor: pointer;
+  font-weight: 550;
+  list-style: none;
+}
+
+#build-error summary::-webkit-details-marker { display: none; }
+
+#build-log {
+  margin: 0;
+  padding: 10px 12px;
+  max-height: 200px;
+  overflow: auto;
+  border-top: 1px solid rgba(220, 38, 38, 0.14);
+  font: 11.5px/1.55 var(--font-mono);
+  white-space: pre-wrap;
+  color: #7f1d1d;
+}
+
+/* ==========================================================================
+   Source Pane & Hairline Divider
+   ========================================================================== */
+#source-pane,
+#paper {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#source-pane {
+  position: relative;
+  background: var(--bg-surface);
+}
+
+.source-top-fade {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 54px;
+  z-index: 4;
+  pointer-events: none;
+  background: linear-gradient(to bottom, #ffffff 50%, rgba(255, 255, 255, 0) 100%);
+}
+
+#divider {
+  position: relative;
+  z-index: 6;
+  background: var(--hairline);
+  cursor: col-resize;
+  touch-action: none;
+}
+
+#divider::before {
+  content: "";
+  position: absolute;
+  inset: 0 -5px;
+}
+
+.divider-grip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 28px;
+  border-radius: 999px;
+  background: transparent;
+  transition: background-color 0.14s ease, height 0.14s ease;
+}
+
+#divider:hover .divider-grip,
+#divider:focus-visible .divider-grip,
+.resizing #divider .divider-grip {
+  background: var(--accent);
+  height: 40px;
+}
+
+#divider:focus-visible {
+  outline: 0;
+  background: var(--accent);
+}
+
+.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+#source-code {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 62px 0 48px;
+  font: 12.5px/1.75 var(--font-mono);
+}
+
+.source-line {
+  position: relative;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: start;
+  min-height: 24px;
+}
+
+.source-line:hover {
+  background: rgba(20, 20, 19, 0.02);
+}
+
+.source-line code {
+  display: block;
+  padding: 1px 18px 2px 6px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+}
+
+.source-line.selected {
+  background: var(--accent-soft);
+}
+
+.source-line.selected.word-selected {
+  background: #f3f7ff;
+}
+
+.source-line code mark {
+  color: inherit;
+  background: #c7dcff;
+  border-radius: 3px;
+  padding: 0 1px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.source-line .tex-command { color: #3f4ea6; }
+.source-line .tex-comment { color: #94948c; font-style: italic; }
+
+.line-gutter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 1px 10px 0 6px;
+  user-select: none;
+}
+
+.line-link {
+  min-height: 22px;
+  min-width: 22px;
+  padding: 0 2px;
+  border-radius: 4px;
+  justify-content: flex-end;
+  font: 11.5px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--faint);
+}
+
+.line-link:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.source-line.selected .line-link {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.note-count {
+  min-width: 17px;
+  min-height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font: 600 10px/1 var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  background: var(--bg-subtle);
+  color: var(--muted);
+}
+
+.note-count.has-open {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.note-count.has-open:hover {
+  background: #fde8c8;
+}
+
+.note-count[aria-expanded="true"] {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   PDF Canvas Stage & Marks
+   ========================================================================== */
+.pdf-stage {
+  --pdf-gutter: 12px;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: var(--bg-canvas);
+}
+
+#pdf-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+}
+
+#pdf-scroll:focus-visible {
+  outline-offset: -2px;
+}
+
+.pdfViewer {
+  padding: 62px 0 56px;
+}
+
+.pdfViewer.removePageBorders .page {
+  margin: 0 auto 20px;
+  box-shadow: 0 0 0 1px rgba(20, 20, 19, 0.07), var(--shadow-page);
+}
+
+@media (min-width: 761px) {
+  #workspace:not(.source-closed) .pdf-stage { --pdf-gutter: 8px; }
+  #workspace:not(.source-closed) .pdfViewer.removePageBorders .page { margin-left: var(--pdf-gutter); }
+}
+
+#empty-pdf {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.history,
+.box-hint {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: var(--shadow-island);
+  white-space: nowrap;
+}
+
+.history {
+  background: var(--warn-soft);
+  border: 1px solid rgba(217, 119, 6, 0.25);
+  color: var(--warn);
+}
+
+.history button {
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--ink);
+  font-size: 11.5px;
+}
+
+.box-hint {
+  background: rgba(26, 26, 24, 0.88);
+  color: #ffffff;
+  pointer-events: none;
+}
+
+/* PDF Annotation Highlights — MUST be position: absolute! */
+.review-marks {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.review-mark {
+  position: absolute;
+  pointer-events: none;
+}
+
+.review-mark.text {
+  background: rgba(250, 204, 21, 0.34);
+  border-radius: 2px;
+  mix-blend-mode: multiply;
+}
+
+.review-mark.text.current { background: rgba(37, 99, 235, 0.24); }
+
+.review-mark.region {
+  background: rgba(250, 204, 21, 0.14);
+  border: 1.5px solid rgba(217, 119, 6, 0.55);
+  border-radius: 4px;
+}
+
+.review-mark.region.current {
+  border-color: rgba(37, 99, 235, 0.78);
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.review-mark.sync {
+  border-radius: 4px;
+  background: rgba(37, 99, 235, 0.14);
+}
+
+.review-mark.sync.current { background: rgba(37, 99, 235, 0.22); }
+
+#pdf-scroll.boxing {
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.boxing .textLayer,
+.boxing .annotationLayer {
+  pointer-events: none;
+}
+
+#box-draft {
+  position: fixed;
+  z-index: 18;
+  pointer-events: none;
+  border: 1.5px dashed var(--accent);
+  border-radius: 4px;
+  background: rgba(37, 99, 235, 0.12);
+}
+
+/* ==========================================================================
+   Selection Popover & Toast
+   ========================================================================== */
+.selection-popover {
+  position: fixed;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-island);
+}
+
+.selection-popover button {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 12px;
+}
+
+#toast {
+  position: absolute;
+  z-index: 21;
+  bottom: 16px;
+  right: 16px;
+  max-width: min(380px, calc(100% - 32px));
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(26, 26, 24, 0.9);
+  color: #ffffff;
+  font-size: 12.5px;
+  box-shadow: var(--shadow-island);
+}
+
+/* ==========================================================================
+   Card-Based Floating Review Window (clean cards, ZERO left stripes)
+   ========================================================================== */
+#review {
+  position: absolute;
+  z-index: 11;
+  top: 58px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  width: min(396px, calc(100% - 24px));
+  max-height: min(720px, calc(100% - 70px));
+  overflow: hidden;
+  background: var(--bg-well);
+  border: 1px solid var(--hairline);
+  border-radius: 13px;
+  box-shadow: var(--shadow-window);
+  font: 13px/1.55 var(--font-sans);
+}
+
+#review.is-expanded { z-index: 19; }
+
+.review-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0 8px 0 14px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--hairline);
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+}
+
+.review-header:focus-visible { outline-offset: -2px; }
+
+.review-header h1 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+#count {
+  font: 500 11.5px/1 var(--font-mono);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.review-filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 2px;
+}
+
+.filter-pill {
+  min-height: 24px;
+  padding: 0 7px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--muted);
+  gap: 3px;
+}
+
+.filter-pill[aria-selected="true"] {
+  background: var(--bg-subtle);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.tab-count {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.review-window-actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  margin-left: auto;
+  flex: none;
+}
+
+.review-window-actions button {
+  min-height: 26px;
+  min-width: 26px;
+  border-radius: 6px;
+  color: var(--muted);
+}
+
+#review.is-expanded #expand-review { padding-inline: 8px; white-space: nowrap; }
+
+#all-notes {
+  padding: 0 7px;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+#review-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 10px 10px 26px;
+}
+
+.review-empty {
+  padding: 36px 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+#resize-review {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  z-index: 2;
+  min-width: 20px;
+  min-height: 20px;
+  padding: 0;
+  border-radius: 5px;
+  color: var(--faint);
+  opacity: 0.6;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+#resize-review:hover {
+  opacity: 1;
+  background: var(--bg-surface);
+  color: var(--ink);
+}
+
+/* Composer Card */
+#note-form {
+  margin-bottom: 10px;
+  padding: 12px;
+  border-radius: 11px;
+  background: var(--bg-surface);
+  border: 1px solid rgba(37, 99, 235, 0.28);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+}
+
+#target {
+  margin-bottom: 7px;
+  color: var(--muted);
+  font: 500 11.5px/1.4 var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+textarea {
+  display: block;
+  width: 100%;
+  min-height: 74px;
+  padding: 8px 10px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--ink);
+  font: 13px/1.55 var(--font-sans);
+  resize: vertical;
+}
+
+textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2.5px rgba(37, 99, 235, 0.12);
+  outline: none;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+#draft-status {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+/* Clean Review Cards (NO vertical left stripes) */
+#threads {
+  display: grid;
+  gap: 9px;
+}
+
+#threads:empty {
+  display: none;
+}
+
+.note {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 11px;
+  background: var(--bg-surface);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.14s ease, box-shadow 0.14s ease, opacity 0.14s ease;
+}
+
+.note:hover {
+  border-color: var(--hairline-strong);
+}
+
+.note.active {
+  border-color: rgba(37, 99, 235, 0.42);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.09), var(--shadow-sm);
+}
+
+.note.resolved {
+  background: #fafaf8;
+  border-color: rgba(20, 20, 19, 0.055);
+  box-shadow: none;
+  opacity: 0.72;
+}
+
+.note.resolved:hover {
+  opacity: 0.95;
+}
+
+/* 1. Card Meta Header */
+.note-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.note-meta-left,
+.note-meta-right {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.note-location {
+  font: 500 11.5px/1.3 var(--font-mono);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.note-stale {
+  font-size: 11px;
+  color: var(--warn);
+}
+
+.note-resolved-tag {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.jump-link {
+  min-height: 21px;
+  padding: 0 6px;
+  border-radius: 5px;
+  background: var(--bg-subtle);
+  font: 550 10.5px/1 var(--font-mono);
+  color: var(--ink-secondary);
+}
+
+.jump-link:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.jump-link.subtle {
+  background: transparent;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* 2. Comment Body */
+button.note-body {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  margin: 0 0 8px;
+  border-radius: 4px;
+  text-align: start;
+  justify-content: flex-start;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+button.note-body:hover {
+  color: var(--accent);
+  background: transparent;
+}
+
+/* 3. Clean Rounded Quote Block (no left vertical stripe) */
+.note-quote {
+  margin: 0 0 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--bg-subtle);
+  color: var(--ink-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.source-excerpt {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  max-height: 6.5em;
+  overflow: auto;
+}
+
+/* Diff Disclosure */
+.diff {
+  margin: 6px 0 8px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.diff summary { cursor: pointer; }
+
+.diff pre {
+  margin: 5px 0 0;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: var(--bg-subtle);
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 11.5px/1.5 var(--font-mono);
+}
+
+.diff .removed { color: #b91c1c; }
+.diff .added { color: #15803d; }
+
+/* 4. Soft Rounded Reply Blocks (no left vertical stripes) */
+.note-replies {
+  margin: 8px 0 2px;
+  display: grid;
+  gap: 6px;
+}
+
+.reply {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-subtle);
+}
+
+.reply.is-agent {
+  background: var(--accent-surface);
+}
+
+.reply-meta {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.reply-meta.agent {
+  color: var(--accent);
+}
+
+.reply p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-secondary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* 5. Card Footer Action Row */
+.note-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(20, 20, 19, 0.06);
+}
+
+.text-action {
+  min-height: 24px;
+  padding: 0 7px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.reply-action {
+  color: var(--accent);
+  margin-left: -7px;
+}
+
+.reply-action:hover {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+}
+
+.resolve-action:hover {
+  color: var(--ink);
+}
+
+/* Inline Reply Form */
+.reply-form {
+  margin-top: 8px;
+}
+
+.reply-form textarea {
+  min-height: 62px;
+}
+
+.reply-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.reply-form-actions button {
+  min-height: 26px;
+  padding: 0 9px;
+  font-size: 12px;
+}
+
+/* ==========================================================================
+   Compact Responsive Mode
+   ========================================================================== */
+@media (max-width: 760px) {
+  #workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #divider,
+  #workspace[data-compact-pane="pdf"] #source-pane,
+  #workspace[data-compact-pane="tex"] #paper,
+  #workspace[data-compact-pane="pdf"] .file-sep,
+  #workspace[data-compact-pane="pdf"] #file-picker-wrap {
+    display: none;
+  }
+
+  .compact-only { display: inline-flex; }
+  #toggle-source svg { display: none; }
+  #box-note .btn-label { display: none; }
+  .zoom-sep, .pdf-zoom { display: none; }
+  #workspace[data-compact-pane="tex"] .pdf-sep,
+  #workspace[data-compact-pane="tex"] .pdf-nav,
+  #workspace[data-compact-pane="tex"] #box-note { display: none; }
+
+  .file-trigger { max-width: 145px; }
+}
+
+@media (prefers-contrast: more) {
+  .island, .selection-popover, .file-menu { background: #ffffff; border-color: rgba(0, 0, 0, 0.25); }
+  .review-mark.region { border-color: #92400e; }
+  .review-mark.sync { background: rgba(37, 99, 235, 0.3); }
+}

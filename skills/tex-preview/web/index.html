@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TeX Preview</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/vendor/pdf_viewer.css">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <div id="workspace">
+    <!-- Top-Left Floating Island: View + Custom TeX File Picker -->
+    <div class="island island-left" id="island-left" role="toolbar" aria-label="源码控制">
+      <div class="view-controls" aria-label="切换视图">
+        <button id="toggle-source" class="island-btn" aria-controls="source-pane" aria-pressed="true" title="显示或收起 TeX 源码">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <rect x="1.75" y="2.5" width="12.5" height="11" rx="2" stroke="currentColor" stroke-width="1.35"/>
+            <path d="M6.25 2.5v11" stroke="currentColor" stroke-width="1.35"/>
+          </svg>
+          <span class="compact-only">源码</span>
+        </button>
+        <button id="compact-pdf" class="island-btn compact-only" aria-controls="paper" aria-pressed="false">PDF</button>
+      </div>
+
+      <span class="island-sep file-sep" aria-hidden="true"></span>
+
+      <div class="file-dropdown" id="file-picker-wrap">
+        <button id="file-trigger" type="button" class="island-btn file-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="file-menu" title="切换 TeX 源文件">
+          <svg class="file-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M4.25 2.25h5l3 3v8.5a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1V3.25a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+            <path d="M9.25 2.25v3h3" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+          </svg>
+          <span id="file-label" class="file-label">main.tex</span>
+          <svg class="select-chevron" width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M4.5 6.25 8 9.75l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div id="file-menu" class="file-menu" role="listbox" aria-label="TeX 源文件" hidden></div>
+      </div>
+
+      <button id="source-note" class="island-btn accent" hidden>批注此处</button>
+    </div>
+
+    <!-- Top-Right Floating Island: Build + Review + PDF Controls -->
+    <div class="island island-right" id="island-right" role="toolbar" aria-label="PDF 与审阅工具">
+      <button id="build" class="island-btn build-btn" title="排版已更新 · 点击重新编译">
+        <span id="status" class="status-dot-wrap" role="status" aria-label="正在准备 PDF">
+          <span class="status-dot" aria-hidden="true"></span>
+        </span>
+        <svg class="build-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M13.25 8a5.25 5.25 0 1 1-1.35-3.52M13.25 2.75v2.75H10.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span id="status-text" class="build-label" hidden></span>
+      </button>
+
+      <span class="island-sep" aria-hidden="true"></span>
+
+      <button id="box-note" class="island-btn" aria-pressed="false" title="框选公式、图表或任意区域">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <rect x="2.5" y="2.5" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.35" stroke-dasharray="2.5 2"/>
+        </svg>
+        <span class="btn-label">框选</span>
+      </button>
+
+      <button id="toggle-review" class="island-btn" aria-expanded="false" aria-controls="review" title="审阅批注">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M3 3.5h10a1.25 1.25 0 0 1 1.25 1.25v6a1.25 1.25 0 0 1-1.25 1.25H6.6L3.75 14v-2H3a1.25 1.25 0 0 1-1.25-1.25v-6A1.25 1.25 0 0 1 3 3.5Z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/>
+        </svg>
+        <span id="review-badge" hidden></span>
+      </button>
+
+      <span class="island-sep pdf-sep" aria-hidden="true"></span>
+
+      <div class="island-group pdf-nav" aria-label="翻页">
+        <button id="prev" class="island-btn icon" aria-label="上一页" title="上一页">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M9.75 4.25 6 8l3.75 3.75" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <span class="page-counter">
+          <input id="page" type="number" min="1" value="1" aria-label="PDF 页码">
+          <span id="pages"></span>
+        </span>
+        <button id="next" class="island-btn icon" aria-label="下一页" title="下一页">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M6.25 4.25 10 8l-3.75 3.75" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <span class="island-sep zoom-sep" aria-hidden="true"></span>
+
+      <div class="island-group pdf-zoom" aria-label="缩放">
+        <button id="zoom-out" class="island-btn icon" aria-label="缩小" title="缩小">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M4 8h8" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <select id="fit" class="zoom-preset" aria-label="PDF 缩放预设">
+          <option value="page-width">适宽</option>
+          <option value="page-fit">整页</option>
+          <option value="page-actual">100%</option>
+          <option id="custom-zoom" value="custom" hidden disabled></option>
+        </select>
+        <button id="zoom-in" class="island-btn icon" aria-label="放大" title="放大">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M8 4v8M4 8h8" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button id="pdf-fullscreen" class="island-btn text-btn" type="button" aria-pressed="false" title="PDF 全屏">全屏</button>
+      </div>
+    </div>
+
+    <!-- Floating Error Disclosure -->
+    <details id="build-error" hidden>
+      <summary>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M8 5v3.5M8 11h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span>编译失败 · 查看错误日志</span>
+      </summary>
+      <pre id="build-log"></pre>
+    </details>
+
+    <!-- Source Pane -->
+    <section id="source-pane" aria-label="TeX 源码">
+      <div class="source-top-fade" aria-hidden="true"></div>
+      <div id="source-code" tabindex="0" aria-label="TeX 源码"></div>
+    </section>
+
+    <!-- Minimal Hairline Split Divider -->
+    <div id="divider" tabindex="0" role="separator" aria-label="调整 TeX 与 PDF 的宽度" aria-orientation="vertical"
+         aria-controls="source-pane paper" aria-valuemin="0" aria-valuemax="100" aria-valuenow="42"
+         title="拖动调整宽度，双击恢复默认">
+      <span class="divider-grip" aria-hidden="true"></span>
+    </div>
+
+    <!-- PDF Desk Stage -->
+    <section id="paper" aria-label="PDF">
+      <div class="pdf-stage">
+        <div id="pdf-scroll" tabindex="0" aria-label="PDF 页面"><div id="viewer" class="pdfViewer"></div></div>
+        <div id="empty-pdf">正在生成 PDF…</div>
+
+        <div class="history" id="history" hidden>
+          <span>正在查看批注时的历史 PDF</span>
+          <button id="back-current">返回当前版本</button>
+        </div>
+
+        <div id="box-hint" class="box-hint" hidden>在 PDF 页面上拖拽框选区域 · Esc 取消</div>
+        <div id="box-draft" hidden></div>
+      </div>
+    </section>
+
+    <!-- Card-Based Floating Review Sheet -->
+    <aside id="review" hidden aria-labelledby="review-title">
+      <div class="review-header" id="review-handle" tabindex="0" title="拖动或用方向键移动批注窗口">
+        <h1 id="review-title">批注</h1>
+        <span id="count"></span>
+
+        <div id="review-filters" class="review-filters" role="tablist" aria-label="筛选批注" hidden>
+          <button type="button" class="filter-pill" data-filter="all" role="tab" aria-selected="true">全部 <span class="tab-count"></span></button>
+          <button type="button" class="filter-pill" data-filter="open" role="tab" aria-selected="false">待处理 <span class="tab-count"></span></button>
+        </div>
+
+        <div class="review-window-actions">
+          <button id="all-notes" hidden>全部</button>
+          <button id="expand-review" class="icon" aria-label="全屏显示批注" title="全屏显示批注">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M9.5 2.75h3.75V6.5M6.5 13.25H2.75V9.5M13.25 2.75 9 7M2.75 13.25 7 9" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span id="review-exit-label" hidden>退出全屏</span>
+          </button>
+          <button id="close-review" class="icon" aria-label="关闭批注" title="关闭批注">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M4.25 4.25 11.75 11.75M11.75 4.25 4.25 11.75" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div id="review-content">
+        <form id="note-form" hidden>
+          <div id="target"></div>
+          <textarea id="note-body" placeholder="写下批注…" maxlength="6000"></textarea>
+          <div class="form-actions">
+            <span id="draft-status" role="status"></span>
+            <button type="button" id="draft-tex" title="在 TeX 中定位选区" hidden>TEX</button>
+            <button type="button" id="cancel-note">取消</button>
+            <button type="submit" class="primary" id="finish-note">完成</button>
+          </div>
+        </form>
+        <div id="threads"></div>
+        <div id="review-empty" class="review-empty" hidden></div>
+      </div>
+
+      <button id="resize-review" type="button" aria-label="调整批注窗口大小" title="拖动或用方向键调整窗口大小">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <path d="M10.5 4.5 4.5 10.5M10.5 8 8 10.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </aside>
+
+    <div id="toast" role="status" hidden></div>
+  </div>
+
+  <div id="selection-tools" class="selection-popover" aria-label="选区操作" hidden>
+    <button id="selection-jump" title="在 TeX 中查看">TEX</button>
+    <span class="island-sep" aria-hidden="true"></span>
+    <button id="text-note" class="primary">添加批注</button>
+  </div>
+</body>
+</html>

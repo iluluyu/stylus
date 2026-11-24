@@ -1,0 +1,4 @@
+interface:
+  display_name: "TeX Preview"
+  short_description: "本地审阅 PDF 与 TeX，批注并交给 Agent 修改"
+  default_prompt: "用 $tex-preview 打开论文的本地审阅预览。"

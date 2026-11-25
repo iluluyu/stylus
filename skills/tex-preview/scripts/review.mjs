@@ -1,7 +1,7 @@
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { diffLines } from 'diff';
-import { ensureGitignore, forward, inverse, isId, newId, readJson, writeJson } from './project.mjs';
+import { ensureGitignore, forward, inverse, isId, newId, readJson, updateReviewIndex, writeJson } from './project.mjs';
 
 const numberedEnvironment = /\\(begin|end)\{(equation|align|alignat|gather|multline|flalign|displaymath|figure|table)\*?\}/g;
 const uncomment = (line) => line.replace(/(?<!\\)(?:\\\\)*%.*$/, '');
@@ -266,7 +266,23 @@ export function createReview(project) {
     return { ...note, current, diff: current && diffLines(note.source.excerpt.join('\n') + '\n', current.excerpt.join('\n') + '\n')
       .filter(({ added, removed }) => added || removed) };
   }
+  async function syncIndex() {
+    if (!project.gitignoreRoot) return;
+    const all = await threads();
+    const openCount = all.filter((note) => note.status === 'open').length;
+    await updateReviewIndex(project.revDir, 'tex:' + project.projectKey, {
+      kind: 'tex',
+      key: project.projectKey,
+      entry: project.input,
+      root: project.scope || '.',
+      engine: project.engine,
+      stateDir: 'tex/' + project.projectKey,
+      openCount,
+      totalCount: all.length,
+    });
+  }
   return {
+    syncIndex,
     async add(build, input) {
       const body = readBody(input.body);
       if (!build || build.id !== input.build) throw annotateError('找不到选区对应的编译版本。', 409);
@@ -309,6 +325,7 @@ export function createReview(project) {
         if (error.code !== 'EEXIST') throw error;
         return alreadySaved(await get(id));
       }
+      await syncIndex();
       return note;
     },
     async list(build) {
@@ -335,6 +352,7 @@ export function createReview(project) {
       if (event.status && !['open', 'resolved'].includes(event.status)) throw annotateError('批注状态无效。');
       await ensureGitignore(project.gitignoreRoot);
       await writeJson(join(folder(noteId), id + '.json'), event);
+      await syncIndex();
       return event;
     },
   };

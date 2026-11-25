@@ -4,7 +4,7 @@ import { cp, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'no
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { test } from 'node:test';
-import { compile, forward, inverse, latestBuild, openProject } from '../scripts/project.mjs';
+import { compile, forward, inverse, latestBuild, openProject, readReviewIndex } from '../scripts/project.mjs';
 import { anchorFor, createReview, relocate } from '../scripts/review.mjs';
 
 test('a saved equation review survives edits, repagination and a failed build', async (t) => {
@@ -90,4 +90,14 @@ test('a moved project retains designs/rev/tex state, SyncTeX, auto-gitignore, an
   assert.equal(archived.id, build3.id);
   assert.deepEqual(await forward(project, archived, file, 5), target);
   assert.equal((await inverse(project, archived, target.page, target.x, target.y)).file, file);
+
+  const review = createReview(project);
+  const note = await review.add(archived, { build: archived.id, source: { file, from: 5, to: 5 }, body: 'Async note.' });
+  const indexed = await readReviewIndex(join(relocated, 'paper-a'));
+  assert.equal(indexed.entries.length, 1);
+  assert.equal(indexed.entries[0].kind, 'tex');
+  assert.equal(indexed.entries[0].openCount, 1);
+  await review.event(note.id, { status: 'resolved' }, 'user');
+  const afterResolve = await readReviewIndex(join(relocated, 'paper-a'));
+  assert.equal(afterResolve.entries[0].openCount, 0);
 });

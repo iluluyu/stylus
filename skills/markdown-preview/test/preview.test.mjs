@@ -460,3 +460,66 @@ test("supports image directory preview and triggers SSE reload when referenced i
     await rm(temp, { recursive: true, force: true });
   }
 });
+
+test("designs/rev/index.json tracks open counts and supports --list, --brief, and --status", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "md-preview-index-"));
+  try {
+    await mkdir(join(temp, ".git"), { recursive: true });
+    const notesDir = join(temp, "notes");
+    await mkdir(notesDir, { recursive: true });
+    const docPath = join(notesDir, "report.md");
+    await writeFile(docPath, "# Report\n\nAlpha paragraph.\n", "utf8");
+
+    const runCli = (...cliArgs) => {
+      const res = spawnSync(process.execPath, [cli, ...cliArgs], { encoding: "utf8" });
+      assert.equal(res.status, 0, res.stderr);
+      return JSON.parse(res.stdout);
+    };
+    const server = await startPreviewServer(docPath, { port: 0 });
+    try {
+      const listBefore = runCli("--list", temp);
+      assert.equal(listBefore.entries.length, 1);
+      assert.equal(listBefore.entries[0].kind, "md");
+      assert.equal(listBefore.entries[0].entry, "notes/report.md");
+      assert.equal(listBefore.entries[0].openCount, 0);
+
+      const pageHtml = await (await fetch(server.url + "/")).text();
+      const meta = JSON.parse(pageHtml.match(/id="review-data">([^<]+)/)[1]);
+      const target = meta.blocks.find((b) => b.start === 3);
+      assert.ok(target);
+
+      const postRes = await fetch(`${server.url}/_annotations?doc=report.md`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Origin: server.url },
+        body: JSON.stringify({
+          kind: "point",
+          block: target.id,
+          revision: meta.revision,
+          body: "Check this figure later.",
+        }),
+      });
+      assert.equal(postRes.status, 201);
+      const saved = await postRes.json();
+
+      const listAfterAdd = runCli("--list", temp);
+      assert.equal(listAfterAdd.entries[0].openCount, 1);
+
+      const briefOpen = runCli(docPath, "--annotations", "--brief", "--status", "open");
+      assert.equal(briefOpen.annotations.length, 1);
+      assert.equal(briefOpen.annotations[0].status, "open");
+      assert.equal(briefOpen.annotations[0].preview, "Check this figure later.");
+
+      runCli(docPath, "--reply", saved.id, "Updated figure.");
+      const briefAfterReply = runCli(docPath, "--annotations", "--brief", "--status", "open");
+      assert.equal(briefAfterReply.annotations.length, 0);
+
+      const listAfterReply = runCli("--list", temp);
+      assert.equal(listAfterReply.entries[0].openCount, 0);
+      assert.equal(listAfterReply.entries[0].totalCount, 1);
+    } finally {
+      await server.close();
+    }
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});

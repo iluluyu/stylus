@@ -25,7 +25,7 @@ metadata:
    - Accepts single/multiple `.md` or image files (`.svg`/`.png`/`.jpg`/`.webp`/`.gif`) or directories; watches `.md` files and referenced local figures for live reload; auto-picks a free port if `4321` is occupied.
    - Pass `--root <dir>` when relative image or note links point above the input directory (e.g. `../figures/fig1.png`).
    - Prints `{ "url", "pid", "files", "root", "annotationsDir" }` as JSON. Return the clickable `url` (and `.html` path if exported) and leave the server running unless asked to stop (`kill <pid>`).
-   - **State directory (`annotationsDir`)**: stays with the project under `designs/rev/md` (per-doc folders `<stem>-<hash>`, reuses the nearest `designs/` folder or Design canvas, otherwise `<repo>/designs/rev/md`, or `<root>/designs/rev/md` outside Git; auto-writes `designs/rev/.gitignore`). Override with `--annotations-dir <dir>`.
+   - **State directory (`annotationsDir`)**: stays with the project under `designs/rev/md` (per-doc folders `<stem>-<hash>`, reuses the nearest `designs/` folder or Design canvas, otherwise `<repo>/designs/rev/md`, or `<root>/designs/rev/md` outside Git; auto-writes `designs/rev/.gitignore` and `designs/rev/index.json`). Override with `--annotations-dir <dir>`.
 
 ## Authoring & Syntax Notes
 
@@ -36,16 +36,17 @@ metadata:
 
 ## Annotations & Agent Handoff
 
-In live preview (not standalone HTML), users select text → **批注** (quote) or click **添加插入点** → character gap (caret); comments persist in `annotationsDir`.
+In live preview (not standalone HTML), users select text → **批注** (quote) or click **添加插入点** → character gap (caret); submitted notes persist immediately in `annotationsDir` and update `designs/rev/index.json`.
 
-Read and reply with the same inputs, `--root`, and `--annotations-dir` flags used at launch (or a file subset with the original explicit `--root`):
+Discover active entries via `--list` (and check `designs/ROADMAP.md` for linked canvases), then read and reply with the entry's `--root` / `--annotations-dir`:
 
 ```bash
-node <skill>/scripts/preview.mjs <inputs...> --annotations [--since <ISO-time>]
+node <skill>/scripts/preview.mjs --list [dir]
+node <skill>/scripts/preview.mjs <inputs...> --annotations [--brief] [--status open|replied] [--since <ISO-time>]
 node <skill>/scripts/preview.mjs <inputs...> --reply <annotation-id> 'Concise answer or edit summary.'
 ```
 
-- **Read before acting**: inspect the referenced source lines first; use `--since <ISO-time>` when resuming.
+- **Batch edits**: pull `--annotations --brief --status open` first to triage text vs. canvas updates (`designs/ROADMAP.md`). For multiple notes in one file, read all target contexts first and edit bottom-to-top to avoid line drift.
 - **Stale locations**: when `location` is `null` (block changed or became ambiguous), re-locate using stored `quote` and `original` section rather than stale line numbers.
 - **Insertion points**: locate the exact Markdown gap via source line range + `caret.before`/`caret.after` (`caret.offset` counts UTF-16 units in *rendered* block text, not raw Markdown columns; older points report `insertAfterLine`). Preserve inline Markdown and paragraph structure when inserting standalone figures.
-- **Scope & reply**: confirm intended edit scope against the user's request before modifying files. Verify the updated preview, then reply concisely (appears in the browser within seconds).
+- **Scope & reply**: confirm intended edit scope against the user's request before modifying files. Verify the updated preview, reply concisely, and update `designs/ROADMAP.md` if figures changed.

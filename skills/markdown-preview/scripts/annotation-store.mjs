@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync, statSync } from "node:fs";
-import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, realpath, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
 
@@ -55,6 +55,39 @@ async function ensureGitignore(dir) {
     { flag: "wx", mode: 0o600 }).catch((err) => { if (err.code !== "EEXIST") throw err; });
 }
 
+export async function updateReviewIndex(revDir, id, record) {
+  if (!revDir) return;
+  await ensureGitignore(revDir);
+  const file = join(revDir, "index.json");
+  let current = { version: 1, entries: {} };
+  try {
+    current = JSON.parse(await readFile(file, "utf8"));
+  } catch (err) {
+    if (err.code !== "ENOENT") throw err;
+  }
+  const entries = current && typeof current.entries === "object" && current.entries ? { ...current.entries } : {};
+  const now = new Date().toISOString();
+  entries[id] = { ...record, updatedAt: now };
+  const tmp = join(revDir, `index.${newId()}.tmp`);
+  await writeFile(tmp, JSON.stringify({ version: 1, updatedAt: now, entries }) + "\n", { flag: "wx", mode: 0o600 });
+  await rename(tmp, file);
+}
+
+export async function readReviewIndex(dir = process.cwd()) {
+  const resolved = await realpath(dir);
+  const revDir = reviewRoot(resolved);
+  let data = null;
+  try {
+    data = JSON.parse(await readFile(join(revDir, "index.json"), "utf8"));
+  } catch (err) {
+    if (err.code !== "ENOENT") throw err;
+  }
+  const entries = data && typeof data.entries === "object" && data.entries
+    ? Object.values(data.entries).sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""))
+    : [];
+  return { revDir, entries };
+}
+
 // Never guess when an edited file has several identical candidate blocks.
 export function locateBlock(page, revision, anchor) {
   if (revision === page.revision) {
@@ -65,13 +98,14 @@ export function locateBlock(page, revision, anchor) {
   return matches.length === 1 && matches[0].section === anchor.section ? matches[0] : null;
 }
 
-export function createAnnotationStore(dir, { baseDir = null, serveRoot = null, gitignoreRoot = null } = {}) {
+export function createAnnotationStore(dir, { baseDir = null, serveRoot = null, gitignoreRoot = null, revDir = null } = {}) {
   const canonicalDoc = (doc) => {
     if (!baseDir || !serveRoot) return doc;
     const rel = relative(baseDir, resolve(serveRoot, doc)).split(sep).join("/");
     return rel && rel !== ".." && !rel.startsWith("../") ? rel : doc;
   };
-  const docDir = (canonical) => join(dir, shortKey(basename(canonical, extname(canonical)), canonical, "doc"));
+  const docKey = (canonical) => shortKey(basename(canonical, extname(canonical)), canonical, "doc");
+  const docDir = (canonical) => join(dir, docKey(canonical));
   async function save(folder, record) {
     await ensureGitignore(gitignoreRoot);
     await mkdir(folder, { recursive: true, mode: 0o700 });
@@ -79,14 +113,37 @@ export function createAnnotationStore(dir, { baseDir = null, serveRoot = null, g
     await writeFile(tmp, JSON.stringify(record) + "\n", { flag: "wx", mode: 0o600 });
     await rename(tmp, join(folder, `${record.id}.json`));
   }
+  async function list(doc) {
+    const key = canonicalDoc(doc);
+    const folder = docDir(key);
+    const notes = await jsonFiles(folder, jsonPattern);
+    return Promise.all(notes.filter((note) => note.doc === key).map(async (note) => ({ ...note, doc,
+      replies: await jsonFiles(join(folder, note.id), jsonPattern),
+    })));
+  }
+  async function syncDocIndex(doc) {
+    if (!gitignoreRoot || !revDir) return;
+    const key = canonicalDoc(doc);
+    const slugKey = docKey(key);
+    const notes = await list(doc);
+    const openCount = notes.filter((note) => !note.replies.length).length;
+    const rootRel = baseDir && serveRoot
+      ? (relative(baseDir, serveRoot).split(sep).join("/") || ".")
+      : ".";
+    await updateReviewIndex(revDir, `md:${slugKey}`, {
+      kind: "md",
+      key: slugKey,
+      entry: key,
+      root: rootRel,
+      stateDir: `md/${slugKey}`,
+      openCount,
+      totalCount: notes.length,
+    });
+  }
   return {
-    async list(doc) {
-      const key = canonicalDoc(doc);
-      const folder = docDir(key);
-      const notes = await jsonFiles(folder, jsonPattern);
-      return Promise.all(notes.filter((note) => note.doc === key).map(async (note) => ({ ...note, doc,
-        replies: await jsonFiles(join(folder, note.id), jsonPattern),
-      })));
+    list,
+    async syncIndex(docs = []) {
+      for (const doc of docs) await syncDocIndex(doc);
     },
     async add(page, input) {
       const block = page?.blocks.find((b) => b.id === input.block);
@@ -111,6 +168,7 @@ export function createAnnotationStore(dir, { baseDir = null, serveRoot = null, g
         ...(quote && { quote: input.quote, start: input.start, end: input.end }),
         ...(!quote && validCaret && { caret: { offset: caret.offset, before: caret.before, after: caret.after } }) };
       await save(docDir(key), record);
+      await syncDocIndex(page.doc);
       return { ...record, doc: page.doc };
     },
     async reply(doc, annotationId, body) {
@@ -121,22 +179,42 @@ export function createAnnotationStore(dir, { baseDir = null, serveRoot = null, g
       if (note.doc !== key) throw new Error("Annotation belongs to a different document");
       const reply = { id: newId(), body: body.trim(), createdAt: new Date().toISOString() };
       await save(join(folder, annotationId), reply);
+      await syncDocIndex(doc);
       return reply;
     },
   };
 }
 
-export async function collectAnnotations(pages, store, since) {
+export async function collectAnnotations(pages, store, sinceOrOpts) {
+  const opts = typeof sinceOrOpts === "string" ? { since: sinceOrOpts } : (sinceOrOpts || {});
+  const { since, status, brief } = opts;
   const result = [];
   for (const page of pages.filter((p) => p.doc)) {
     for (const note of await store.list(page.doc)) {
       if (since && note.createdAt <= since && !note.replies.some((reply) => reply.createdAt > since)) continue;
+      const noteStatus = note.replies.length ? "replied" : "open";
+      if (status && noteStatus !== status) continue;
       const block = locateBlock(page, note.revision, note.anchor);
-      result.push({ id: note.id, file: page.doc, kind: note.kind, createdAt: note.createdAt, body: note.body,
+      const location = block ? { heading: block.heading, from: block.start, to: block.end,
+        ...(note.kind === "point" && !note.caret && { insertAfterLine: block.end }) } : null;
+      if (brief) {
+        result.push({
+          id: note.id,
+          file: page.doc,
+          kind: note.kind,
+          status: noteStatus,
+          replyCount: note.replies.length,
+          createdAt: note.createdAt,
+          preview: note.body.length > 120 ? note.body.slice(0, 119) + "…" : note.body,
+          location,
+          ...(!block && { original: { heading: note.anchor.heading, from: note.anchor.start, to: note.anchor.end } }),
+        });
+        continue;
+      }
+      result.push({ id: note.id, file: page.doc, kind: note.kind, status: noteStatus, createdAt: note.createdAt, body: note.body,
         ...(note.quote && { quote: note.quote }),
         ...(note.caret && { caret: { ...note.caret, offsetBasis: "rendered-block-utf16" } }),
-        location: block ? { heading: block.heading, from: block.start, to: block.end,
-          ...(note.kind === "point" && !note.caret && { insertAfterLine: block.end }) } : null,
+        location,
         ...(!block && { original: { heading: note.anchor.heading, from: note.anchor.start, to: note.anchor.end } }),
         ...(note.replies.length && { replies: note.replies }),
       });

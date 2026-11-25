@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { renderMarkdown, inlineLocalImages, rewritePageLinks, collectLocalImagePaths } from "./render.mjs";
 import { buildHtmlDocument, ASSET_PATHS } from "./template.mjs";
 import { reviewClient } from "./workspace.mjs";
-import { annotationConfig, createAnnotationStore, collectAnnotations } from "./annotation-store.mjs";
+import { annotationConfig, createAnnotationStore, collectAnnotations, readReviewIndex } from "./annotation-store.mjs";
 
 const within = (dir, path) => path === dir || path.startsWith(dir.endsWith(sep) ? dir : dir + sep);
 const isDesignsRev = (relPath) => {
@@ -296,6 +296,7 @@ export async function startPreviewServer(inputs, opts = {}) {
     baseDir: storeConfig.baseDir,
     serveRoot: canonicalRoot,
     gitignoreRoot: storeConfig.gitignoreRoot,
+    revDir: storeConfig.revDir,
   });
   const port = opts.port ?? 0;
   const clients = new Set();
@@ -370,6 +371,7 @@ export async function startPreviewServer(inputs, opts = {}) {
   }
 
   publish(initial);
+  await store.syncIndex([...cached.documents.keys()]);
 
   const server = http.createServer(async (req, res) => {
     try {
@@ -569,8 +571,14 @@ function parseArgs(argv) {
       args.port = Number(value);
     } else if (a === "--root") args.root = take("--root <dir>");
     else if (a === "--annotations-dir") args.annotationsDir = take("--annotations-dir <dir>");
+    else if (a === "--list") args.list = true;
     else if (a === "--annotations") args.annotations = true;
-    else if (a === "--since") {
+    else if (a === "--brief") args.brief = true;
+    else if (a === "--status") {
+      const value = take("--status <open|replied>");
+      if (!["open", "replied"].includes(value)) throw new Error("--status must be open or replied.");
+      args.status = value;
+    } else if (a === "--since") {
       const date = new Date(take("--since <ISO date>"));
       if (!Number.isFinite(date.getTime())) throw new Error("--since must be a valid date (e.g. 2026-01-01T00:00:00Z).");
       args.since = date.toISOString();
@@ -633,13 +641,23 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.error(`markdown-preview: ${err.message} See --help.`);
     process.exit(1);
   }
-  if (args.help || !args.files.length) {
+  if (args.help || (!args.list && !args.files.length)) {
     console.log(
       "Usage: node scripts/preview.mjs <file.md | image | dir>... [--out <output.html>] [--serve] [--detach] [--port 4321] [--root <dir>] [--annotations-dir <dir>]\n" +
-      "Read annotations: same inputs and root/store flags plus --annotations [--since <ISO date>]\n" +
+      "Discover active reviews: node scripts/preview.mjs --list [dir]\n" +
+      "Read annotations: same inputs and root/store flags plus --annotations [--brief] [--status open|replied] [--since <ISO date>]\n" +
       "Reply: same inputs and root/store flags plus --reply <annotation-id> <text>"
     );
     process.exit(args.help ? 0 : 1);
+  }
+
+  if (args.list) {
+    if (args.files.length > 1) {
+      console.error("markdown-preview: Pass at most one directory with --list.");
+      process.exit(1);
+    }
+    console.log(JSON.stringify(await readReviewIndex(args.files[0] || process.cwd()), null, 2));
+    process.exit(0);
   }
 
   if (args.annotations || args.reply) {
@@ -651,8 +669,13 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       baseDir: storeConfig.baseDir,
       serveRoot: canonicalRoot,
       gitignoreRoot: storeConfig.gitignoreRoot,
+      revDir: storeConfig.revDir,
     });
-    const annotations = await collectAnnotations(pages, store, args.reply ? undefined : args.since);
+    const annotations = await collectAnnotations(pages, store, args.reply ? undefined : {
+      since: args.since,
+      status: args.status,
+      brief: args.brief,
+    });
     if (args.reply) {
       const [id, message] = args.reply;
       const note = annotations.find((item) => item.id === id);

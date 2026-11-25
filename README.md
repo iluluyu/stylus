@@ -22,6 +22,28 @@ stylus 帮助科研人员**写清论文、画清方法、讲清研究**。各个
 | [markdown-preview](skills/markdown-preview/) | 离线科研 Markdown 与图集预览：浅色学术排版、三线表、构建期 KaTeX 公式、多页目录与反向链接、Mermaid/图表、图片热刷新及本地批注回复。 | 本地网页预览实验报告、论文笔记、科研图片集、批注审阅及导出单文件离线 HTML。 |
 | [tex-preview](skills/tex-preview/) | 本地 LaTeX 论文审阅预览：PDF 与 TeX 双向跳转、选词/选段/框选批注、聚焦源码上下文与 Agent 回复。 | 在浏览器中对多文件 LaTeX 论文进行多轮审阅与修改。 |
 
+## Design 系列工作区
+
+[design](skills/design/)、[markdown-preview](skills/markdown-preview/) 与 [tex-preview](skills/tex-preview/) 共享项目内的 `designs/` 目录（由 Agent 与工具维护），用于跨会话定位画布与异步批量审阅：
+
+```text
+your-project/
+├── paper/                 # LaTeX 论文源文件
+├── notes/                 # Markdown 笔记与报告
+└── designs/               # 由 Agent 与工具维护
+    ├── ROADMAP.md         # Agent 维护：画布 ↔ 文档章节、导出目标与状态
+    ├── fig1-overview/     # design 原生画布（project/canvas.json）
+    └── rev/               # 工具自动维护的审阅状态（自动 .gitignore）
+        ├── index.json     # 活跃入口、启动参数与未处理批注数
+        ├── md/            # markdown-preview 批注
+        └── tex/           # tex-preview 批注与编译快照
+```
+
+**异步审阅流程**：
+1. 浏览器中随时批注，提交后立即落盘到 `designs/rev/` 并更新 `index.json`。
+2. 隔段时间或新开会话后，Agent 通过 `--list`（或读取 `designs/rev/index.json` 与 `designs/ROADMAP.md`）直接定位待处理批注与关联画布。
+3. Agent 用 `--annotations --brief --status open` 拉取待办，集中修改文档与画布，统一验证后 `--reply` 并更新 `designs/ROADMAP.md`。
+
 ## 安装指南
 
 整仓克隆后，根据所用智能体将所需技能软链或复制至对应的 skills 目录：

@@ -22,6 +22,28 @@ stylus helps researchers **write clearly, draw clearly, and present clearly**. E
 | [markdown-preview](skills/markdown-preview/) | Offline academic Markdown & figure preview: light paper layout, booktabs three-line tables, build-time KaTeX math, multi-page outlines & backlinks, Mermaid/charts, live reload, and local review annotations. | Previewing research notes, reports, and figure galleries, annotating in-browser, or exporting single-file offline HTML. |
 | [tex-preview](skills/tex-preview/) | Local LaTeX manuscript review: PDF ↔ TeX two-way navigation, word/range/region annotations, focused source context, and Agent replies. | Reviewing and revising multi-file LaTeX manuscripts in a browser. |
 
+## Design Series Workspace
+
+[design](skills/design/), [markdown-preview](skills/markdown-preview/), and [tex-preview](skills/tex-preview/) share a project-local `designs/` directory maintained by the Agent and tools for cross-session canvas lookup and async batch review:
+
+```text
+your-project/
+├── paper/                 # LaTeX manuscript sources
+├── notes/                 # Markdown notes and reports
+└── designs/               # Maintained by Agent & tools
+    ├── ROADMAP.md         # Agent-maintained map: canvases ↔ docs/sections, exports, status
+    ├── fig1-overview/     # Native design canvas (project/canvas.json)
+    └── rev/               # Tool-managed review state (auto-gitignored)
+        ├── index.json     # Active entries, launch flags & open annotation counts
+        ├── md/            # markdown-preview annotations
+        └── tex/           # tex-preview annotations & build snapshots
+```
+
+**Async review loop**:
+1. Annotate anytime in the browser; submitted notes persist immediately under `designs/rev/` and update `index.json`.
+2. Later or in a new session, the Agent runs `--list` (or reads `designs/rev/index.json` and `designs/ROADMAP.md`) to locate pending reviews and linked canvases.
+3. The Agent pulls `--annotations --brief --status open`, applies edits across docs and canvases, verifies once, replies via `--reply`, and updates `designs/ROADMAP.md`.
+
 ## Installation
 
 Clone the repository once, then link or copy the desired skills into your agent's skills directory:

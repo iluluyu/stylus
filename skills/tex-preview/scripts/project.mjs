@@ -70,7 +70,28 @@ export async function openProject(entry, options) {
   const scope = options.state ? root : relative(baseDir, root).split(sep).join('/');
   const projectKey = shortKey(basename(main, '.tex'), input + '\0' + scope, 'tex');
   const dir = join(stateRoot, projectKey);
-  return { main, cwd, root, engine, dir, stateRoot, revDir, gitignoreRoot, title: basename(main) };
+  return { main, cwd, root, engine, dir, stateRoot, revDir, baseDir, gitignoreRoot, input, scope, projectKey, title: basename(main) };
+}
+
+export async function updateReviewIndex(revDir, id, record) {
+  if (!revDir) return;
+  await ensureGitignore(revDir);
+  const file = join(revDir, 'index.json');
+  const current = await readJson(file, { version: 1, entries: {} });
+  const entries = current && typeof current.entries === 'object' && current.entries ? { ...current.entries } : {};
+  const now = new Date().toISOString();
+  entries[id] = { ...record, updatedAt: now };
+  await writeJson(file, { version: 1, updatedAt: now, entries });
+}
+
+export async function readReviewIndex(dir = process.cwd()) {
+  const resolved = await realpath(dir);
+  const revDir = reviewRoot(resolved);
+  const data = await readJson(join(revDir, 'index.json'), null);
+  const entries = data && typeof data.entries === 'object' && data.entries
+    ? Object.values(data.entries).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
+    : [];
+  return { revDir, entries };
 }
 
 export function reviewRoot(root) {

@@ -4,7 +4,7 @@ import { access, readFile, stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { basename, extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { compile, forward, getBuild, inverse, latestBuild, openProject, pathInside } from './project.mjs';
+import { compile, forward, getBuild, inverse, latestBuild, openProject, pathInside, readReviewIndex } from './project.mjs';
 import { anchorFor, createReview, withPdfSelection } from './review.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -77,6 +77,7 @@ async function serve(project, port) {
   });
 
   const review = createReview(project);
+  await review.syncIndex();
   let latest = await latestBuild(project);
   let buildError = '';
   let building = false;
@@ -203,6 +204,7 @@ function parse(args) {
       return args[++i];
     };
     if (arg === '--detach') options.detach = true;
+    else if (arg === '--list') options.list = true;
     else if (arg === '--annotations') options.annotations = true;
     else if (arg === '--brief') options.brief = true;
     else if (arg === '--annotation') options.annotation = take();
@@ -224,7 +226,8 @@ function parse(args) {
     else options.positionals.push(arg);
   }
   if (!Number.isSafeInteger(options.port) || options.port < 0 || options.port > 65535) throw new Error('Invalid port.');
-  if (!options.help && options.positionals.length !== 1) throw new Error('Pass exactly one main .tex file.');
+  if (options.list && options.positionals.length > 1) throw new Error('Pass at most one directory with --list.');
+  if (!options.help && !options.list && options.positionals.length !== 1) throw new Error('Pass exactly one main .tex file.');
   if ([options.annotations, options.annotation, options.source, options.reply].filter(Boolean).length > 1) {
     throw new Error('Choose a single read or reply command.');
   }
@@ -293,11 +296,16 @@ async function main(args) {
   const options = parse(args);
   if (options.help) {
     console.log('node scripts/preview.mjs main.tex [--detach] [--root DIR] [--engine pdflatex|xelatex|lualatex] [--port N] [--state-dir DIR]\n'
+      + 'Discover active reviews: --list [DIR]\n'
       + 'Review queue: --annotations --brief [--status open|resolved] [--file PATH] [--limit N] [--offset N]\n'
       + 'One thread: --annotation ID [--context N] [--full]\n'
       + 'Compiled source: --source PATH --lines START:END\n'
       + 'Full thread listing: --annotations\n'
       + 'Reply: --reply ID TEXT');
+    return;
+  }
+  if (options.list) {
+    console.log(JSON.stringify(await readReviewIndex(options.positionals[0] || process.cwd()), null, 2));
     return;
   }
   const project = await openProject(options.positionals[0], options);

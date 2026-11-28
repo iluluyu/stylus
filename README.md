@@ -16,6 +16,7 @@ stylus 帮助科研人员**写清论文、画清方法、讲清研究**。各个
 |---|---|---|
 | [math-writing](skills/math-writing/) | 数学写作规范：涵盖定理证明散文结构、公式语法标点、记号一致性与四 C 审校标准。 | 撰写、修改、翻译或审校数学定理、证明推导与 LaTeX 论文草稿。 |
 | [scientific-paper-writing](skills/scientific-paper-writing/) | 英文科研论文写作：融合 Whitesides 结构、Gopen & Swan 句式和曼彻斯特短语库，支持 Fast 与 Learn 双模式。 | 规划、起草、重构或润色高水平英文期刊论文（PRL、Nature 系列、PRX 等）。 |
+| [clear-writing](skills/clear-writing/) | 中英文清晰写作：借鉴 Karpathy 推荐的 ASD-STE100 原则，涵盖短句、主动语态、术语一致、拆解长定语与去 AI 腔。 | 撰写或改写清晰简洁的中英文技术说明、文档教程、通俗解释或严格 STE 草稿。 |
 | [scifig](skills/scifig/) | 出版级矢量科研绘图：Python (matplotlib) 绘制数据图，Typst 绘制方法图与排版拼版，内置自动检查并导出 SVG/PDF/PNG。 | 绘制期刊规格的数据图、算法流程图、方法总览图及多子图拼版。 |
 | [design](skills/design/) | 原生科研构图画布：基于 claude-design (v2.12.1/7db9784)，用 `canvas.json` 与 `.dc.html` 构思方法示意与机理图，通过预编译本地编辑器预览与导出。 | 人机协同绘制论文 Figure 1、系统架构图、机理示意图与流程图。 |
 | [slides](skills/slides/) | 科研演说幻灯片：基于 HTML `deck-stage` 构建清晰叙事的 16:9 演示文稿，支持本地预览与导出为 PDF 或可编辑 PPTX。 | 制作组会报告、学术会议演讲、学位答辩幻灯片及课件。 |
@@ -61,6 +62,7 @@ cd stylus
 mkdir -p ~/.agents/skills
 ln -s "$(pwd)/skills/math-writing"              ~/.agents/skills/
 ln -s "$(pwd)/skills/scientific-paper-writing" ~/.agents/skills/
+ln -s "$(pwd)/skills/clear-writing"             ~/.agents/skills/
 ln -s "$(pwd)/skills/scifig"                   ~/.agents/skills/
 ln -s "$(pwd)/skills/design"                   ~/.agents/skills/
 ln -s "$(pwd)/skills/slides"                   ~/.agents/skills/
@@ -97,7 +99,7 @@ npx degit iluluyu/stylus/skills/math-writing ~/.agents/skills/math-writing
 
 各技能按需索取运行时依赖：
 
-- **math-writing / scientific-paper-writing**：纯 Markdown 工作流与参考规范，无环境依赖，安装后即可提示智能体直接加载。
+- **math-writing / scientific-paper-writing / clear-writing**：纯 Markdown 工作流与参考规范，无环境依赖，安装后即可提示智能体直接加载。
 - **scifig**：使用 Python（数据图表，如 `matplotlib`、`numpy`）与 Typst（方法示意与多面板拼版）；运行示例图校验：
   ```bash
   python skills/scifig/scripts/check.py skills/scifig/examples/fig_method.typ
@@ -133,6 +135,7 @@ npx degit iluluyu/stylus/skills/math-writing ~/.agents/skills/math-writing
 
 - **math-writing**：改编自 John M. Lee 的 *Guidelines for Writing Proofs*（华盛顿大学）及 Academic writing 四 C 审校标准。
 - **scientific-paper-writing**：源自 Gopen & Swan 的 *The Science of Scientific Writing*、Whitesides 的 *Whitesides' Group: Writing a Paper* 与曼彻斯特大学 *Academic Phrasebank*。
+- **clear-writing**：改编自 [ashryaagr/karpathy-output-style](https://github.com/ashryaagr/karpathy-output-style/tree/main/skills/clear-writing)（受 Andrej Karpathy 关于 ASD-STE100 建议启发），补充简体中文清晰写作规范与对照参考，详见 [clear-writing 来源说明](skills/clear-writing/PROVENANCE.md)。
 - **design**：源自 [baoyu-design v2.12.1](https://github.com/JimLiu/baoyu-design/tree/7db9784ac4f4974d78ab166c7db1c706c0481c3d) 的 `claude-design`，保留原生画布、本地编辑器与科研规范适配。
 - **slides**：基于 HTML `deck-stage` 组件与本地独立 PPTX 导出工具链，参考同版本 `claude-slides` 演说规范。
 

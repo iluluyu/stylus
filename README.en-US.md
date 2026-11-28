@@ -16,6 +16,7 @@ stylus helps researchers **write clearly, draw clearly, and present clearly**. E
 |---|---|---|
 | [math-writing](skills/math-writing/) | Mathematical writing standards: proof prose structure, equation grammar and punctuation, notation consistency, and four-C review criteria. | Drafting, revising, translating, or reviewing mathematical proofs, derivations, and LaTeX manuscripts. |
 | [scientific-paper-writing](skills/scientific-paper-writing/) | Scientific paper writing: structure (Whitesides), sentence flow (Gopen & Swan), and phrasing (Manchester Phrasebank), featuring Fast and Learn modes. | Planning, drafting, restructuring, or polishing manuscripts for top-tier journals (PRL, Nature portfolio, PRX, etc.). |
+| [clear-writing](skills/clear-writing/) | Clear English & Chinese writing: inspired by Karpathy's ASD-STE100 suggestion, covering concise sentences, active voice, consistent terms, and Chinese plain-language rules. | Writing or revising clear technical explanations, docs, plain-language rewrites in English/Chinese, or strict ASD-STE100 drafts. |
 | [scifig](skills/scifig/) | Publication-grade vector figures: Python (matplotlib) for data plots, Typst for schematics and multi-panel layouts, with automated linting to SVG/PDF/PNG. | Preparing journal-spec results plots, algorithm flowcharts, method overviews, and composite figures. |
 | [design](skills/design/) | Native scientific canvas: based on claude-design (v2.12.1/7db9784), creating method overviews and mechanisms via `canvas.json` and `.dc.html` with a prebuilt local editor. | Collaboratively drafting paper Figure 1, architecture diagrams, mechanisms, and flowcharts. |
 | [slides](skills/slides/) | Research presentations: narrative-driven 16:9 slide decks using HTML `deck-stage`, with local browser preview and export to PDF or editable PPTX. | Building lab meeting updates, conference talks, defense presentations, and lecture decks. |
@@ -61,6 +62,7 @@ Using the standard shared directory `~/.agents/skills/` (supported by Codex, Zed
 mkdir -p ~/.agents/skills
 ln -s "$(pwd)/skills/math-writing"              ~/.agents/skills/
 ln -s "$(pwd)/skills/scientific-paper-writing" ~/.agents/skills/
+ln -s "$(pwd)/skills/clear-writing"             ~/.agents/skills/
 ln -s "$(pwd)/skills/scifig"                   ~/.agents/skills/
 ln -s "$(pwd)/skills/design"                   ~/.agents/skills/
 ln -s "$(pwd)/skills/slides"                   ~/.agents/skills/
@@ -97,7 +99,7 @@ npx degit iluluyu/stylus/skills/math-writing ~/.agents/skills/math-writing
 
 Each skill declares its own runtime requirements:
 
-- **math-writing / scientific-paper-writing**: Pure Markdown workflows and reference checklists with no runtime dependencies. Directly ingested by compatible agents.
+- **math-writing / scientific-paper-writing / clear-writing**: Pure Markdown workflows and reference checklists with no runtime dependencies. Directly ingested by compatible agents.
 - **scifig**: Uses Python (for data plots via `matplotlib` and `numpy`) and Typst (for schematics and multi-panel composition); run check on an example figure:
   ```bash
   python skills/scifig/scripts/check.py skills/scifig/examples/fig_method.typ
@@ -133,6 +135,7 @@ Each skill declares its own runtime requirements:
 
 - **math-writing**: Adapted from John M. Lee's *Guidelines for Writing Proofs* (University of Washington) and the Academic writing four-C review criteria.
 - **scientific-paper-writing**: Built on Gopen & Swan's *The Science of Scientific Writing*, Whitesides' *Whitesides' Group: Writing a Paper*, and the University of Manchester *Academic Phrasebank*.
+- **clear-writing**: Adapted from [ashryaagr/karpathy-output-style](https://github.com/ashryaagr/karpathy-output-style/tree/main/skills/clear-writing) (inspired by Andrej Karpathy's ASD-STE100 suggestion), extended with Simplified Chinese clear-writing rules and references; see [clear-writing provenance](skills/clear-writing/PROVENANCE.md).
 - **design**: Built on `claude-design` from [baoyu-design v2.12.1](https://github.com/JimLiu/baoyu-design/tree/7db9784ac4f4974d78ab166c7db1c706c0481c3d), retaining the native canvas format, local editor, and scientific constraints.
 - **slides**: Built on the HTML `deck-stage` component and standalone PPTX export toolchain, informed by `claude-slides` presentation guidance from the same release.
 
